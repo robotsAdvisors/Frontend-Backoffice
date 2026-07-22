@@ -30,19 +30,28 @@ abstract class Routes {
   static const INVENTARIO = _Paths.INVENTARIO;
   static const PREMIOS = _Paths.PREMIOS;
   static const ADMIN_USER_DETAIL = _Paths.ADMIN_USER_DETAIL;
-  static const GDPR_REQUESTS    = _Paths.GDPR_REQUESTS;
-  static const REVIEWS          = _Paths.REVIEWS;
-  static const SUPPORT_TICKETS  = _Paths.SUPPORT_TICKETS;
-  static const STORE_CONFIG     = _Paths.STORE_CONFIG;
-  static const KYBC               = _Paths.KYBC;
+  static const GDPR_REQUESTS = _Paths.GDPR_REQUESTS;
+  static const REVIEWS = _Paths.REVIEWS;
+  static const SUPPORT_TICKETS = _Paths.SUPPORT_TICKETS;
+  static const STORE_CONFIG = _Paths.STORE_CONFIG;
+  static const KYBC = _Paths.KYBC;
   static const SENSITIVE_POLICIES = _Paths.SENSITIVE_POLICIES;
-  static const LEGAL_CONSENTS     = _Paths.LEGAL_CONSENTS;
-  static const STRIPE_DISPUTES    = _Paths.STRIPE_DISPUTES;
-  static const EMPLEADOS          = _Paths.EMPLEADOS;
-  static const SEGURIDAD          = _Paths.SEGURIDAD;
-  static const INCIDENCIAS        = _Paths.INCIDENCIAS;
-  static const CONFIRMAR_ENTREGA  = _Paths.CONFIRMAR_ENTREGA;
-  static const COMERCIOS          = _Paths.COMERCIOS;
+  static const LEGAL_CONSENTS = _Paths.LEGAL_CONSENTS;
+  static const STRIPE_DISPUTES = _Paths.STRIPE_DISPUTES;
+  static const EMPLEADOS = _Paths.EMPLEADOS;
+  static const SEGURIDAD = _Paths.SEGURIDAD;
+  static const INCIDENCIAS = _Paths.INCIDENCIAS;
+  static const CONFIRMAR_ENTREGA = _Paths.CONFIRMAR_ENTREGA;
+  static const COMERCIOS = _Paths.COMERCIOS;
+
+  // 🔎 Nuevas rutas antifraude
+  static const ANTIFRAUDE = _Paths.ANTIFRAUDE;
+  static const ANTIFRAUDE_DETAIL = _Paths.ANTIFRAUDE_DETAIL;
+  static const ANTIFRAUDE_SETTINGS = _Paths.ANTIFRAUDE_SETTINGS;
+  static const ANTIFRAUDE_ACTIONS = _Paths.ANTIFRAUDE_ACTIONS;
+
+  // 🔎 Nueva ruta campañas
+  static const CAMPANIAS = _Paths.CAMPANIAS;
 }
 
 abstract class _Paths {
@@ -74,17 +83,26 @@ abstract class _Paths {
   static const INVENTARIO = '/inventario';
   static const PREMIOS = '/premios';
   static const ADMIN_USER_DETAIL = '/admin/users/detail';
-  static const GDPR_REQUESTS    = '/backoffice/gdpr';
-  static const REVIEWS          = '/reviews';
-  static const SUPPORT_TICKETS  = '/backoffice/support';
-  static const STORE_CONFIG     = '/backoffice/store-config';
-  static const KYBC             = '/backoffice/kybc';
+  static const GDPR_REQUESTS = '/backoffice/gdpr';
+  static const REVIEWS = '/reviews';
+  static const SUPPORT_TICKETS = '/backoffice/support';
+  static const STORE_CONFIG = '/backoffice/store-config';
+  static const KYBC = '/backoffice/kybc';
   static const SENSITIVE_POLICIES = '/backoffice/politicas';
-  static const LEGAL_CONSENTS     = '/backoffice/legal';
-  static const STRIPE_DISPUTES    = '/backoffice/pagos';
-  static const EMPLEADOS          = '/admin/empleados';
-  static const SEGURIDAD          = '/admin/seguridad';
-  static const INCIDENCIAS        = '/admin/incidencias';
-  static const CONFIRMAR_ENTREGA  = '/admin/confirmar-entrega';
-  static const COMERCIOS          = '/backoffice/comercios';
+  static const LEGAL_CONSENTS = '/backoffice/legal';
+  static const STRIPE_DISPUTES = '/backoffice/pagos';
+  static const EMPLEADOS = '/admin/empleados';
+  static const SEGURIDAD = '/admin/seguridad';
+  static const INCIDENCIAS = '/admin/incidencias';
+  static const CONFIRMAR_ENTREGA = '/admin/confirmar-entrega';
+  static const COMERCIOS = '/backoffice/comercios';
+
+  // 🔎 Nuevos paths antifraude
+  static const ANTIFRAUDE = '/antifraude';
+  static const ANTIFRAUDE_DETAIL = '/antifraude/detail';
+  static const ANTIFRAUDE_SETTINGS = '/antifraude/settings';
+  static const ANTIFRAUDE_ACTIONS = '/antifraude/actions';
+
+  // 🔎 Nuevo path campañas
+  static const CAMPANIAS = '/backoffice/campanias';
 }

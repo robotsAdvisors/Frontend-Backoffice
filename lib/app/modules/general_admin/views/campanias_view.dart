@@ -4,7 +4,7 @@ import 'package:get/get.dart';
 import 'package:image_picker/image_picker.dart';
 import '../controllers/general_admin_controller.dart';
 
-class CampaignsView extends StatelessWidget {
+class CampaniasView extends StatelessWidget {
   final GeneralAdminController controller = Get.find<GeneralAdminController>();
 
   final TextEditingController nameCtrl = TextEditingController();
@@ -13,7 +13,6 @@ class CampaignsView extends StatelessWidget {
   final TextEditingController endDateCtrl = TextEditingController();
   final TextEditingController productCtrl = TextEditingController();
 
-  // Ahora soporta múltiples imágenes
   final RxList<XFile> productImages = <XFile>[].obs;
 
   Future<void> pickDate(BuildContext context, TextEditingController target) async {
@@ -31,7 +30,7 @@ class CampaignsView extends StatelessWidget {
 
   Future<void> pickImages() async {
     final picker = ImagePicker();
-    final picked = await picker.pickMultiImage(); // varias imágenes
+    final picked = await picker.pickMultiImage();
     if (picked.isNotEmpty) {
       productImages.assignAll(picked);
     }
@@ -53,7 +52,6 @@ class CampaignsView extends StatelessWidget {
       'start_date': startDateCtrl.text,
       'end_date': endDateCtrl.text,
       'product': productCtrl.text.trim(),
-      // lista de paths de imágenes (puede estar vacía)
       'images': productImages.map((img) => img.path).toList(),
     };
 
@@ -117,7 +115,6 @@ class CampaignsView extends StatelessWidget {
       appBar: AppBar(title: const Text('Campañas Promocionales')),
       body: Column(
         children: [
-          // Formulario de creación
           Padding(
             padding: const EdgeInsets.all(16.0),
             child: Column(
@@ -167,7 +164,6 @@ class CampaignsView extends StatelessWidget {
                   ],
                 ),
                 const SizedBox(height: 16),
-                // Campo editable de producto
                 TextField(
                   controller: productCtrl,
                   decoration: const InputDecoration(
@@ -176,7 +172,6 @@ class CampaignsView extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 16),
-                // Subir imágenes (opcional, múltiples)
                 Obx(() {
                   return Column(
                     children: [
@@ -206,7 +201,6 @@ class CampaignsView extends StatelessWidget {
                   );
                 }),
                 const SizedBox(height: 24),
-                // Botones de acción
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                   children: [
@@ -240,7 +234,6 @@ class CampaignsView extends StatelessWidget {
             ),
           ),
           const Divider(height: 1),
-          // Listado de campañas publicadas
           Expanded(
             child: Obx(() {
               if (controller.campaigns.isEmpty) {

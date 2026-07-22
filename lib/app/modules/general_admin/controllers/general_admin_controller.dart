@@ -1056,34 +1056,60 @@ class GeneralAdminController extends GetxController {
     }
   }
 
-  // ──────────── STRIPE DISPUTES & REFUNDS ────────────
+// ──────────── STRIPE DISPUTES & REFUNDS ────────────
 
-  Future<void> loadStripeDisputes({String? status}) async {
-    isLoadingDisputes.value = true;
-    try {
-      final results = await Future.wait([
-        _repo.fetchStripeDisputes(status: status),
-        _repo.fetchStripeDisputeStats(),
-      ]);
-      stripeDisputes.assignAll(results[0] as List<StripeDisputeModel>);
-      stripeDisputeStats.value = results[1] as StripeDisputeStats;
-    } catch (e) {
-      CustomSnackBar.showCustomErrorSnackBar(title: 'Error', message: e.toString());
-    } finally {
-      isLoadingDisputes.value = false;
-    }
+Future<void> loadStripeDisputes({String? status}) async {
+  isLoadingDisputes.value = true;
+  try {
+    final results = await Future.wait([
+      _repo.fetchStripeDisputes(status: status),
+      _repo.fetchStripeDisputeStats(),
+    ]);
+    stripeDisputes.assignAll(results[0] as List<StripeDisputeModel>);
+    stripeDisputeStats.value = results[1] as StripeDisputeStats;
+  } catch (e) {
+    CustomSnackBar.showCustomErrorSnackBar(
+        title: 'Error', message: e.toString());
+  } finally {
+    isLoadingDisputes.value = false;
   }
+}
 
-  Future<void> performDisputeAction(String id, {required String action, String? notes}) async {
-    try {
-      await _repo.performStripeDisputeAction(id, action: action, notes: notes);
-      CustomSnackBar.showCustomSnackBar(
-          title: 'Disputa', message: 'Acción ejecutada correctamente.');
-      await loadStripeDisputes();
-    } on ApiException catch (e) {
-      CustomSnackBar.showCustomErrorSnackBar(title: 'Error', message: e.message);
-    } catch (e) {
-      CustomSnackBar.showCustomErrorSnackBar(title: 'Error', message: e.toString());
-    }
+Future<void> performDisputeAction(String id,
+    {required String action, String? notes}) async {
+  try {
+    await _repo.performStripeDisputeAction(id, action: action, notes: notes);
+    CustomSnackBar.showCustomSnackBar(
+        title: 'Disputa', message: 'Acción ejecutada correctamente.');
+    await loadStripeDisputes();
+  } on ApiException catch (e) {
+    CustomSnackBar.showCustomErrorSnackBar(title: 'Error', message: e.message);
+  } catch (e) {
+    CustomSnackBar.showCustomErrorSnackBar(title: 'Error', message: e.toString());
   }
+}
+
+// ── Campañas Promocionales ────────────────────────────────────────────
+
+final RxList<Map<String, dynamic>> campaigns = <Map<String, dynamic>>[].obs;
+
+/// Crea una nueva campaña y la agrega a la lista.
+/// Podés extender esto para persistir en backend.
+Future<void> createCampaign(Map<String, dynamic> payload) async {
+  campaigns.add(payload);
+  CustomSnackBar.showCustomSnackBar(
+    title: 'Campaña creada',
+    message: 'La campaña se agregó correctamente.',
+  );
+}
+
+/// Elimina una campaña por nombre.
+/// Podés extender esto para borrar en backend.
+Future<void> deleteCampaignByName(String name) async {
+  campaigns.removeWhere((c) => c['name'] == name);
+  CustomSnackBar.showCustomSnackBar(
+    title: 'Campaña eliminada',
+    message: 'La campaña fue eliminada correctamente.',
+  );
+}
 }
