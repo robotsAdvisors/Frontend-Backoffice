@@ -1,12 +1,11 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
 import '../../../data/models/data_subject_request_model.dart';
 import '../../../data/models/legal_consent_model.dart';
 import '../../../data/models/legal_version_model.dart';
-import '../../../data/services/auth_service.dart';
-import '../../../routes/app_pages.dart';
 import '../controllers/general_admin_controller.dart';
+import 'backoffice_sidebar.dart';
 
 class LegalConsentsView extends GetView<GeneralAdminController> {
   const LegalConsentsView({super.key});
@@ -35,112 +34,19 @@ class LegalConsentsView extends GetView<GeneralAdminController> {
       return Scaffold(
         backgroundColor: _bg,
         body: Row(children: [
-          _sidebar(context),
+          BackofficeSidebar(current: 'legal'),
           Expanded(child: _body(context)),
         ]),
       );
     }
     return Scaffold(
       backgroundColor: _bg,
-      drawer: Drawer(child: SafeArea(child: _sidebar(context))),
+      drawer: Drawer(child: SafeArea(child: BackofficeSidebar(current: 'legal'))),
       body: _body(context),
     );
   }
 
   // ─── SIDEBAR ────────────────────────────────────────────────────────────────
-
-  Widget _sidebar(BuildContext context) {
-    return Container(
-      width: 220,
-      color: Colors.white,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(20, 24, 20, 16),
-            child: Row(children: [
-              Container(
-                width: 32, height: 32,
-                decoration: BoxDecoration(
-                    color: _purple, borderRadius: BorderRadius.circular(8)),
-                child: const Icon(Icons.shield_outlined, size: 17, color: Colors.white),
-              ),
-              const SizedBox(width: 10),
-              const Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Text('Backoffice',
-                    style: TextStyle(
-                        fontSize: 14, fontWeight: FontWeight.w800, color: _dark)),
-                Text('Franquicias Plus',
-                    style: TextStyle(fontSize: 10, color: Colors.grey)),
-              ]),
-            ]),
-          ),
-          Container(height: 1, color: _border),
-          const SizedBox(height: 8),
-          _navItem(icon: Icons.grid_view_outlined,    label: 'Dashboard',
-              onTap: () => Get.offAllNamed(Routes.GENERAL_ADMIN)),
-          _navItem(icon: Icons.store_outlined,         label: 'Tiendas',
-              onTap: () => Get.offAllNamed(Routes.GENERAL_ADMIN)),
-          _navItem(icon: Icons.people_outline,         label: 'Comercios',
-              onTap: () => Get.toNamed(Routes.COMERCIOS)),
-          _navItem(icon: Icons.gavel_outlined,         label: 'Legal', selected: true),
-          _navItem(icon: Icons.verified_user_outlined, label: 'KYBC',
-              onTap: () => Get.toNamed(Routes.KYBC)),
-          _navItem(icon: Icons.policy_outlined,        label: 'Políticas',
-              onTap: () => Get.toNamed(Routes.SENSITIVE_POLICIES)),
-
-          _navItem(icon: Icons.payments_outlined,       label: 'Pagos',
-              onTap: () => Get.toNamed(Routes.STRIPE_DISPUTES)),
-          _navItem(icon: Icons.support_agent_outlined, label: 'Soporte',
-              onTap: () => Get.toNamed(Routes.SUPPORT_TICKETS)),
-
-          const Spacer(),
-          Container(height: 1, color: _border),
-          ListTile(
-            dense: true,
-            leading: const Icon(Icons.logout, size: 18, color: Colors.grey),
-            title: const Text('Cerrar Sesión',
-                style: TextStyle(fontSize: 13, color: Colors.grey)),
-            onTap: () async {
-              await AuthService.signOut();
-              Get.offAllNamed(Routes.LOGIN);
-            },
-          ),
-          const SizedBox(height: 8),
-        ],
-      ),
-    );
-  }
-
-  Widget _navItem({
-    required IconData icon,
-    required String label,
-    bool selected = false,
-    VoidCallback? onTap,
-  }) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        margin: const EdgeInsets.fromLTRB(12, 2, 12, 2),
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
-        decoration: BoxDecoration(
-          color: selected ? _purpleLight : Colors.transparent,
-          borderRadius: BorderRadius.circular(10),
-        ),
-        child: Row(children: [
-          Icon(icon, size: 17,
-              color: selected ? _purple : Colors.grey.shade500),
-          const SizedBox(width: 10),
-          Text(label,
-              style: TextStyle(
-                fontSize: 13,
-                fontWeight: selected ? FontWeight.w600 : FontWeight.normal,
-                color: selected ? _purple : Colors.grey.shade700,
-              )),
-        ]),
-      ),
-    );
-  }
 
   // ─── BODY ───────────────────────────────────────────────────────────────────
 

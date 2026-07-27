@@ -57,7 +57,7 @@ class WelcomeView extends GetView<WelcomeController> {
                             ),
                         12.verticalSpace,
                         Text(
-                          'Tu marketplace de productos frescos con beneficios, vouchers y experiencia personalizada.',
+                          'Tu marketplace de productos frescos con beneficios, redemptionCodes y experiencia personalizada.',
                           style: theme.textTheme.bodyMedium?.copyWith(
                             fontSize: 15.sp,
                             height: 1.5,

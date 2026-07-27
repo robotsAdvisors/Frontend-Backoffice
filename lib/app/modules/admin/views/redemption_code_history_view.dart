@@ -2,19 +2,19 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 
-import '../../../data/models/voucher_model.dart';
+import '../../../data/models/redemption_code_model.dart';
 import '../../../data/services/auth_service.dart';
 import '../../../routes/app_pages.dart';
 import '../controllers/admin_controller.dart';
 
-class VoucherHistoryView extends StatefulWidget {
-  const VoucherHistoryView({Key? key}) : super(key: key);
+class RedemptionCodeHistoryView extends StatefulWidget {
+  const RedemptionCodeHistoryView({Key? key}) : super(key: key);
 
   @override
-  State<VoucherHistoryView> createState() => _VoucherHistoryViewState();
+  State<RedemptionCodeHistoryView> createState() => _RedemptionCodeHistoryViewState();
 }
 
-class _VoucherHistoryViewState extends State<VoucherHistoryView> {
+class _RedemptionCodeHistoryViewState extends State<RedemptionCodeHistoryView> {
   final AdminController _ctrl = Get.find<AdminController>();
 
   static const _purple      = Color(0xFF7C3AED);
@@ -47,13 +47,13 @@ class _VoucherHistoryViewState extends State<VoucherHistoryView> {
 
   // ─── Filtered / paginated ─────────────────────────────────────────────────
 
-  List<VoucherModel> get _filtered {
+  List<RedemptionCodeModel> get _filtered {
     // When a date filter is active, use the server-fetched list (or client fallback).
-    final sourceAll = _dateFilter.isNotEmpty && _ctrl.dateFilteredVouchers.isNotEmpty
-        ? _ctrl.dateFilteredVouchers.toList()
-        : _ctrl.vouchers.toList();
+    final sourceAll = _dateFilter.isNotEmpty && _ctrl.dateFilteredRedemptionCodes.isNotEmpty
+        ? _ctrl.dateFilteredRedemptionCodes.toList()
+        : _ctrl.redemptionCodes.toList();
 
-    List<VoucherModel> base;
+    List<RedemptionCodeModel> base;
     switch (_histTab) {
       case 1: base = sourceAll.where((v) => !v.isRedeemed && !v.isExpired).toList(); break;
       case 2: base = sourceAll.where((v) => v.isRedeemed).toList(); break;
@@ -69,7 +69,7 @@ class _VoucherHistoryViewState extends State<VoucherHistoryView> {
           _ctrl.productNameFor(v).toLowerCase().contains(q)).toList();
     }
     // Client-side date fallback for partially-typed dates
-    if (_dateFilter.isNotEmpty && _ctrl.dateFilteredVouchers.isEmpty
+    if (_dateFilter.isNotEmpty && _ctrl.dateFilteredRedemptionCodes.isEmpty
         && !_ctrl.isLoadingDateFilter.value) {
       final parts = _dateFilter.split('/');
       if (parts.length == 3) {
@@ -89,7 +89,7 @@ class _VoucherHistoryViewState extends State<VoucherHistoryView> {
     return base;
   }
 
-  List<VoucherModel> get _paginated {
+  List<RedemptionCodeModel> get _paginated {
     final f = _filtered;
     final start = (_page - 1) * _pageSize;
     if (start >= f.length) return [];
@@ -205,7 +205,7 @@ class _VoucherHistoryViewState extends State<VoucherHistoryView> {
                 onPressed: () => setState(() {
                   _mainTab = 0;
                   _codeCtrl.clear();
-                  _ctrl.clearVoucherPreview();
+                  _ctrl.clearRedemptionCodePreview();
                 }),
                 icon: const Icon(Icons.add, size: 15, color: Colors.white),
                 label: const Text('Nuevo Canje',
@@ -342,7 +342,7 @@ class _VoucherHistoryViewState extends State<VoucherHistoryView> {
       children: [
         // Left panel — entrada de código
         SizedBox(width: 380, child: _validarLeft()),
-        // Right panel — detalle del voucher
+        // Right panel — detalle del redemptionCode
         Expanded(child: _validarRight()),
       ],
     );
@@ -389,19 +389,19 @@ class _VoucherHistoryViewState extends State<VoucherHistoryView> {
                       hintText: 'L STR - XXXX - X',
                       hintStyle: TextStyle(color: Colors.grey,
                           fontWeight: FontWeight.normal, fontSize: 13, letterSpacing: 0)),
-                  onSubmitted: (_) { setState(() {}); _ctrl.previewVoucherCode(_codeCtrl.text); },
+                  onSubmitted: (_) { setState(() {}); _ctrl.previewRedemptionCodeCode(_codeCtrl.text); },
                 ),
               ),
             ),
             const SizedBox(width: 8),
             Obx(() => GestureDetector(
-              onTap: _ctrl.isPreviewingVoucher.value ? null
-                  : () { setState(() {}); _ctrl.previewVoucherCode(_codeCtrl.text); },
+              onTap: _ctrl.isPreviewingRedemptionCode.value ? null
+                  : () { setState(() {}); _ctrl.previewRedemptionCodeCode(_codeCtrl.text); },
               child: Container(
                 width: 44, height: 44,
                 decoration: BoxDecoration(color: _purple,
                     borderRadius: BorderRadius.circular(10)),
-                child: _ctrl.isPreviewingVoucher.value
+                child: _ctrl.isPreviewingRedemptionCode.value
                     ? const Center(child: SizedBox(width: 18, height: 18,
                         child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white)))
                     : const Icon(Icons.arrow_forward, color: Colors.white, size: 20)),
@@ -463,11 +463,11 @@ class _VoucherHistoryViewState extends State<VoucherHistoryView> {
           const SizedBox(height: 28),
           // ── Identidad del Cliente (cuando hay preview) ───────────────────
           Obx(() {
-            final voucher = _ctrl.previewedVoucher.value;
-            if (voucher == null) return const SizedBox.shrink();
-            final name     = _ctrl.customerNameFor(voucher);
-            final rawAlias = voucher.customerAlias?.isNotEmpty == true
-                ? voucher.customerAlias! : name;
+            final redemptionCode = _ctrl.previewedRedemptionCode.value;
+            if (redemptionCode == null) return const SizedBox.shrink();
+            final name     = _ctrl.customerNameFor(redemptionCode);
+            final rawAlias = redemptionCode.customerAlias?.isNotEmpty == true
+                ? redemptionCode.customerAlias! : name;
             final alias    = rawAlias.contains(' ') ? rawAlias : '@$rawAlias';
             final initials = name.split(' ').where((w) => w.isNotEmpty)
                 .take(2).map((w) => w[0].toUpperCase()).join();
@@ -491,18 +491,18 @@ class _VoucherHistoryViewState extends State<VoucherHistoryView> {
                       const Text('Usuario Registrado',
                           style: TextStyle(fontSize: 11, color: Colors.grey)),
                       const Spacer(),
-                      if (voucher.customerBadge?.isNotEmpty == true)
+                      if (redemptionCode.customerBadge?.isNotEmpty == true)
                         Container(
                           padding: const EdgeInsets.symmetric(
                               horizontal: 8, vertical: 2),
                           decoration: BoxDecoration(
                               color: const Color(0xFFD1FAE5),
                               borderRadius: BorderRadius.circular(12)),
-                          child: Text(voucher.customerBadge!,
+                          child: Text(redemptionCode.customerBadge!,
                               style: const TextStyle(fontSize: 10,
                                   fontWeight: FontWeight.w700,
                                   color: Color(0xFF059669))))
-                      else if (voucher.paymentVerified)
+                      else if (redemptionCode.paymentVerified)
                         Container(
                           padding: const EdgeInsets.symmetric(
                               horizontal: 8, vertical: 2),
@@ -579,8 +579,8 @@ class _VoucherHistoryViewState extends State<VoucherHistoryView> {
   Widget _validarRight() {
     final ctx = context;
     return Obx(() {
-      final voucher = _ctrl.previewedVoucher.value;
-      if (voucher == null) {
+      final redemptionCode = _ctrl.previewedRedemptionCode.value;
+      if (redemptionCode == null) {
         return Container(
           color: const Color(0xFFF8F7FF),
           child: Center(
@@ -608,13 +608,13 @@ class _VoucherHistoryViewState extends State<VoucherHistoryView> {
         );
       }
 
-      final productName = _ctrl.productNameFor(voucher);
-      final imageUrl    = voucher.productImageUrl ?? '';
-      final pts         = voucher.pointsUsed;
-      final sku         = voucher.productSku ?? '';
-      final isAvailable = !voucher.isRedeemed && !voucher.isExpired;
-      final payAmt      = voucher.paymentAmountEur;
-      final payOk       = voucher.paymentVerified;
+      final productName = _ctrl.productNameFor(redemptionCode);
+      final imageUrl    = redemptionCode.productImageUrl ?? '';
+      final pts         = redemptionCode.pointsUsed;
+      final sku         = redemptionCode.productSku ?? '';
+      final isAvailable = !redemptionCode.isRedeemed && !redemptionCode.isExpired;
+      final payAmt      = redemptionCode.paymentAmountEur;
+      final payOk       = redemptionCode.paymentVerified;
       return SingleChildScrollView(
         padding: const EdgeInsets.all(20),
         child: Container(
@@ -643,7 +643,7 @@ class _VoucherHistoryViewState extends State<VoucherHistoryView> {
                       borderRadius: BorderRadius.circular(20)),
                   child: Text(
                     isAvailable ? 'Disponible'
-                        : voucher.isRedeemed ? 'Canjeado' : 'Expirado',
+                        : redemptionCode.isRedeemed ? 'Canjeado' : 'Expirado',
                     style: const TextStyle(fontSize: 11,
                         fontWeight: FontWeight.w700, color: Colors.white)))),
             ]),
@@ -688,7 +688,7 @@ class _VoucherHistoryViewState extends State<VoucherHistoryView> {
                         style: TextStyle(fontSize: 13, color: Colors.grey)),
                     Text(
                       isAvailable ? 'Listo para entrega'
-                          : voucher.isRedeemed ? 'Ya canjeado' : 'Expirado',
+                          : redemptionCode.isRedeemed ? 'Ya canjeado' : 'Expirado',
                       style: TextStyle(
                           fontSize: 13, fontWeight: FontWeight.w600,
                           color: isAvailable
@@ -737,9 +737,9 @@ class _VoucherHistoryViewState extends State<VoucherHistoryView> {
                   child: ElevatedButton(
                     onPressed: isAvailable && !_ctrl.isLoading.value
                         ? () async {
-                            final ok = await _ctrl.validateVoucherCode(
-                                voucher.code);
-                            if (ok) _ctrl.clearVoucherPreview();
+                            final ok = await _ctrl.validateRedemptionCodeCode(
+                                redemptionCode.code);
+                            if (ok) _ctrl.clearRedemptionCodePreview();
                           }
                         : null,
                     style: ElevatedButton.styleFrom(
@@ -772,7 +772,7 @@ class _VoucherHistoryViewState extends State<VoucherHistoryView> {
                 // ── Incidencia / Cancelar ──────────────────────────
                 Row(mainAxisAlignment: MainAxisAlignment.center, children: [
                   GestureDetector(
-                    onTap: () => _showIncidentDialog(ctx, voucher),
+                    onTap: () => _showIncidentDialog(ctx, redemptionCode),
                     child: const Row(children: [
                       Icon(Icons.arrow_upward, size: 13, color: Colors.grey),
                       SizedBox(width: 3),
@@ -782,7 +782,7 @@ class _VoucherHistoryViewState extends State<VoucherHistoryView> {
                     ])),
                   const SizedBox(width: 20),
                   GestureDetector(
-                    onTap: () => _ctrl.clearVoucherPreview(),
+                    onTap: () => _ctrl.clearRedemptionCodePreview(),
                     child: const Row(children: [
                       Icon(Icons.close, size: 13, color: Colors.grey),
                       SizedBox(width: 3),
@@ -813,7 +813,7 @@ class _VoucherHistoryViewState extends State<VoucherHistoryView> {
     );
   }
 
-  void _showIncidentDialog(BuildContext context, VoucherModel voucher) {
+  void _showIncidentDialog(BuildContext context, RedemptionCodeModel redemptionCode) {
     final reasonCtrl = TextEditingController();
     showDialog<void>(
       context: context,
@@ -844,7 +844,7 @@ class _VoucherHistoryViewState extends State<VoucherHistoryView> {
               final reason = reasonCtrl.text.trim();
               if (reason.isEmpty) return;
               Navigator.of(ctx).pop();
-              await _ctrl.reportVoucherIncident(voucher.id, reason: reason);
+              await _ctrl.reportRedemptionCodeIncident(redemptionCode.id, reason: reason);
             },
             child: const Text('Reportar')),
         ],
@@ -868,7 +868,7 @@ class _VoucherHistoryViewState extends State<VoucherHistoryView> {
               style: const TextStyle(fontSize: 13, color: Colors.grey)),
           const SizedBox(height: 8),
           const Text(
-            'Se generará un Payment Intent en Stripe por el importe monetario del voucher.',
+            'Se generará un Payment Intent en Stripe por el importe monetario del redemptionCode.',
             style: TextStyle(fontSize: 13)),
         ]),
         actions: [
@@ -881,7 +881,7 @@ class _VoucherHistoryViewState extends State<VoucherHistoryView> {
                   borderRadius: BorderRadius.circular(10))),
             onPressed: () async {
               Navigator.of(ctx).pop();
-              final result = await _ctrl.initiateVoucherPayment(code);
+              final result = await _ctrl.initiateRedemptionCodePayment(code);
               if (result != null && context.mounted) {
                 _showPaymentResultDialog(context, result);
               }
@@ -1021,7 +1021,7 @@ class _VoucherHistoryViewState extends State<VoucherHistoryView> {
                     onPressed: () {
                       _dateCtrl.clear();
                       setState(() { _dateFilter = ''; _page = 1; });
-                      _ctrl.loadVouchersForDate('');
+                      _ctrl.loadRedemptionCodesForDate('');
                     })
                 : null,
             filled: true, fillColor: const Color(0xFFF5F5F5), isDense: true,
@@ -1037,10 +1037,10 @@ class _VoucherHistoryViewState extends State<VoucherHistoryView> {
               final parts = trimmed.split('/');
               if (parts.length == 3) {
                 final iso = '${parts[2]}-${parts[1].padLeft(2,'0')}-${parts[0].padLeft(2,'0')}';
-                _ctrl.loadVouchersForDate(iso);
+                _ctrl.loadRedemptionCodesForDate(iso);
               }
             } else if (trimmed.isEmpty) {
-              _ctrl.loadVouchersForDate('');
+              _ctrl.loadRedemptionCodesForDate('');
             }
           },
         ),
@@ -1098,10 +1098,10 @@ class _VoucherHistoryViewState extends State<VoucherHistoryView> {
 
   Widget _tableTabs() {
     final counts = [
-      _ctrl.vouchers.length,
-      _ctrl.vouchers.where((v) => !v.isRedeemed && !v.isExpired).length,
-      _ctrl.redeemedVouchers.length,
-      _ctrl.expiredUnredeemedVouchers.length,
+      _ctrl.redemptionCodes.length,
+      _ctrl.redemptionCodes.where((v) => !v.isRedeemed && !v.isExpired).length,
+      _ctrl.redeemedRedemptionCodes.length,
+      _ctrl.expiredUnredeemedRedemptionCodes.length,
     ];
     const labels = ['Todos', 'Pendientes', 'Entregados', 'Expirados sin canjear'];
 
@@ -1170,7 +1170,7 @@ class _VoucherHistoryViewState extends State<VoucherHistoryView> {
     );
   }
 
-  Widget _tableRow(VoucherModel v) {
+  Widget _tableRow(RedemptionCodeModel v) {
     final eventDate   = v.redeemedAt ?? v.issuedAt;
     final customerName = _ctrl.customerNameFor(v);
     final rawAlias    = v.customerAlias?.isNotEmpty == true ? v.customerAlias! : customerName;
@@ -1191,9 +1191,15 @@ class _VoucherHistoryViewState extends State<VoucherHistoryView> {
     if (v.isRedeemed) {
       statusBg = const Color(0xFFECFDF5); statusFg = const Color(0xFF059669);
       statusLabel = 'Entregado';
+    } else if (v.isIncident) {
+      statusBg = const Color(0xFFFEF2F2); statusFg = const Color(0xFFDC2626);
+      statusLabel = 'Incidencia';
     } else if (v.isExpired) {
       statusBg = const Color(0xFFF3F4F6); statusFg = const Color(0xFF6B7280);
       statusLabel = 'Expirado';
+    } else if (v.isInProgress) {
+      statusBg = const Color(0xFFDBEAFE); statusFg = const Color(0xFF1D4ED8);
+      statusLabel = 'En proceso';
     } else {
       statusBg = const Color(0xFFFFF7ED); statusFg = const Color(0xFFD97706);
       statusLabel = 'Pendiente';
@@ -1201,7 +1207,7 @@ class _VoucherHistoryViewState extends State<VoucherHistoryView> {
 
     return Column(children: [
       InkWell(
-        onTap: () => _showVoucherDetail(context, v),
+        onTap: () => _showRedemptionCodeDetail(context, v),
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
           child: Row(children: [
@@ -1278,7 +1284,7 @@ class _VoucherHistoryViewState extends State<VoucherHistoryView> {
     ]);
   }
 
-  void _showVoucherDetail(BuildContext context, VoucherModel v) {
+  void _showRedemptionCodeDetail(BuildContext context, RedemptionCodeModel v) {
     final productName  = _ctrl.productNameFor(v);
     final customerName = _ctrl.customerNameFor(v);
     final alias        = v.customerAlias?.isNotEmpty == true
@@ -1315,8 +1321,8 @@ class _VoucherHistoryViewState extends State<VoucherHistoryView> {
                       borderRadius: BorderRadius.circular(10))),
               onPressed: () async {
                 Navigator.of(ctx).pop();
-                final ok = await _ctrl.validateVoucherCode(v.code);
-                if (ok) _ctrl.clearVoucherPreview();
+                final ok = await _ctrl.validateRedemptionCodeCode(v.code);
+                if (ok) _ctrl.clearRedemptionCodePreview();
               },
               child: const Text('Confirmar entrega')),
         ],
@@ -1383,14 +1389,14 @@ class _VoucherHistoryViewState extends State<VoucherHistoryView> {
 
   // "Canjes por estado" — donut-style legend card
   Widget _canjesporEstadoCard() {
-    // GET /marketplace/analytics/vouchers/by-status/?store={id}
+    // GET /marketplace/analytics/redemptionCodes/by-status/?store={id}
     // { entregados: N, pendientes: N, expirados: N }
-    final status     = _ctrl.vouchersByStatus.value;
-    final entregados = status['entregados'] as int? ?? _ctrl.redeemedVouchers.length;
+    final status     = _ctrl.redemptionCodesByStatus.value;
+    final entregados = status['entregados'] as int? ?? _ctrl.redeemedRedemptionCodes.length;
     final pendientes = status['pendientes'] as int?
-        ?? _ctrl.vouchers.where((v) => !v.isRedeemed && !v.isExpired).length;
+        ?? _ctrl.redemptionCodes.where((v) => !v.isRedeemed && !v.isExpired).length;
     final expirados  = status['expirados'] as int?
-        ?? _ctrl.expiredUnredeemedVouchers.length;
+        ?? _ctrl.expiredUnredeemedRedemptionCodes.length;
     final total      = entregados + pendientes + expirados;
     final safeTotal  = total == 0 ? 1 : total;
 

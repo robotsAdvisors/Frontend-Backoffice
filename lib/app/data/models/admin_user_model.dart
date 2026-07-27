@@ -39,6 +39,11 @@ class AdminUserModel {
   final String? kycRejectionReason;
   final String? deactivationStatus;
   final DateTime? deactivationDate;
+  // Presentes SOLO en el detalle (GET /admin/users/{id}/), no en el listado.
+  final List<StoreMembership> storeMemberships;
+  final List<UserConsent> consents;
+  final List<UserGdprRequest> gdprRequests;
+  final List<UserAuditEntry> recentAudit;
 
   AdminUserModel({
     required this.id,
@@ -76,6 +81,10 @@ class AdminUserModel {
     this.kycRejectionReason,
     this.deactivationStatus,
     this.deactivationDate,
+    this.storeMemberships = const [],
+    this.consents = const [],
+    this.gdprRequests = const [],
+    this.recentAudit = const [],
   });
 
   factory AdminUserModel.fromJson(Map<String, dynamic> json) {
@@ -99,8 +108,13 @@ class AdminUserModel {
     // Parse transactions
     final transactionsRaw = json['transactions'] ?? [];
     final transactionsList = (transactionsRaw is List)
-        ? transactionsRaw.whereType<Map>().map((e) => Map<String, dynamic>.from(e as Map)).toList()
+        ? transactionsRaw.whereType<Map>().map((e) => Map<String, dynamic>.from(e)).toList()
         : <Map<String, dynamic>>[];
+
+    // Listas anidadas del detalle. `_maps` normaliza cualquier lista de objetos.
+    List<Map<String, dynamic>> maps(dynamic raw) => raw is List
+        ? raw.whereType<Map>().map((e) => Map<String, dynamic>.from(e)).toList()
+        : const <Map<String, dynamic>>[];
 
     return AdminUserModel(
       id:             (json['user_id'] ?? json['id'] ?? '').toString(),
@@ -117,11 +131,11 @@ class AdminUserModel {
       country:        (json['country'] ?? '').toString(),
       language:       (json['language'] ?? '').toString(),
       registeredAt:   DateTime.tryParse((json['registered_at'] ?? json['date_joined'] ?? '').toString()) ?? DateTime.now(),
-      lastAccessAt:   DateTime.tryParse((json['last_access'] ?? json['last_login'] ?? '').toString()),
+      lastAccessAt:   DateTime.tryParse((json['last_access'] ?? json['last_login'] ?? json['last_active_at'] ?? '').toString()),
       lastPurchaseAt: DateTime.tryParse((json['last_purchase'] ?? '').toString()),
       consentPercent: _toInt(compliance is Map ? (compliance['consent_percent'] ?? json['consent_percent']) : 0),
       kycEnabled:     _toBool(compliance is Map ? (compliance['kyc_enabled'] ?? json['kyc_enabled']) : false),
-      authEnabled:    _toBool(compliance is Map ? (compliance['auth_enabled'] ?? json['auth_enabled']) : false),
+      authEnabled:    _toBool(compliance is Map ? (compliance['auth_enabled'] ?? json['auth_enabled'] ?? json['two_factor_enabled']) : json['two_factor_enabled']),
       hasBillingInfo: _toBool(compliance is Map ? (compliance['has_billing'] ?? json['has_billing']) : false),
       totalPoints:    _toInt(activity is Map ? (activity['total_points'] ?? json['total_points']) : 0),
       totalRedemptions: _toInt(activity is Map ? (activity['total_redemptions'] ?? json['total_redemptions']) : 0),
@@ -140,10 +154,20 @@ class AdminUserModel {
       kycSubmittedAt: kyc is Map ? DateTime.tryParse((kyc['submitted_at'] ?? '').toString()) : null,
       kycApprovedAt: kyc is Map ? DateTime.tryParse((kyc['approved_at'] ?? '').toString()) : null,
       kycRejectionReason: kyc is Map ? (kyc['rejection_reason'] ?? '').toString() : null,
-      deactivationStatus: (json['deactivation_status'] ?? '').toString().isEmpty
-          ? null
-          : (json['deactivation_status'] ?? '').toString(),
-      deactivationDate: DateTime.tryParse((json['deactivation_date'] ?? '').toString()),
+      deactivationStatus: json['is_deleted'] == true
+          ? 'deleted'
+          : ((json['deactivation_status'] ?? '').toString().isEmpty
+              ? null
+              : (json['deactivation_status'] ?? '').toString()),
+      deactivationDate: DateTime.tryParse(
+          (json['deleted_at'] ?? json['deactivation_date'] ?? '').toString()),
+      storeMemberships:
+          maps(json['store_memberships']).map(StoreMembership.fromJson).toList(),
+      consents: maps(json['consents']).map(UserConsent.fromJson).toList(),
+      gdprRequests:
+          maps(json['gdpr_requests']).map(UserGdprRequest.fromJson).toList(),
+      recentAudit:
+          maps(json['recent_audit']).map(UserAuditEntry.fromJson).toList(),
     );
   }
 
@@ -151,4 +175,83 @@ class AdminUserModel {
   static bool _toBool(dynamic v) => v is bool ? v : (v?.toString().toLowerCase() == 'true');
 
   String get statusLabel => isSuspended ? 'Cuenta Suspendida' : (isActive ? 'Cuenta Activa' : 'Inactiva');
+}
+
+/// Pertenencia de un usuario a una tienda (rol y estado).
+/// OJO: el backend serializa con doble guion bajo (`store__id`, `store__name`),
+/// artefacto del ORM de Django; se mapea LITERALMENTE esas claves.
+class StoreMembership {
+  final String storeId;
+  final String storeName;
+  final String role; // OWNER | ADMIN | MEMBER
+  final bool isActive;
+  final DateTime? created;
+
+  const StoreMembership({
+    required this.storeId,
+    required this.storeName,
+    this.role = '',
+    this.isActive = true,
+    this.created,
+  });
+
+  factory StoreMembership.fromJson(Map<String, dynamic> json) => StoreMembership(
+        storeId: (json['store__id'] ?? '').toString(),
+        storeName: (json['store__name'] ?? '').toString(),
+        role: (json['role'] ?? '').toString(),
+        isActive: json['is_active'] as bool? ?? true,
+        created: DateTime.tryParse((json['created'] ?? '').toString()),
+      );
+}
+
+/// Consentimiento legal aceptado/retirado por el usuario.
+class UserConsent {
+  final String documentType;
+  final String version;
+  final DateTime? acceptedAt;
+  final DateTime? withdrawnAt;
+
+  const UserConsent({
+    this.documentType = '',
+    this.version = '',
+    this.acceptedAt,
+    this.withdrawnAt,
+  });
+
+  factory UserConsent.fromJson(Map<String, dynamic> json) => UserConsent(
+        documentType: (json['document_type'] ?? '').toString(),
+        version: (json['version'] ?? '').toString(),
+        acceptedAt: DateTime.tryParse((json['accepted_at'] ?? '').toString()),
+        withdrawnAt: DateTime.tryParse((json['withdrawn_at'] ?? '').toString()),
+      );
+}
+
+/// Solicitud RGPD del usuario (acceso, borrado, etc.).
+class UserGdprRequest {
+  final String type;
+  final String status;
+  final DateTime? created;
+
+  const UserGdprRequest({this.type = '', this.status = '', this.created});
+
+  factory UserGdprRequest.fromJson(Map<String, dynamic> json) => UserGdprRequest(
+        type: (json['type'] ?? '').toString(),
+        status: (json['status'] ?? '').toString(),
+        created: DateTime.tryParse((json['created'] ?? '').toString()),
+      );
+}
+
+/// Entrada reciente del registro de auditoría del usuario.
+class UserAuditEntry {
+  final String action;
+  final String description;
+  final DateTime? created;
+
+  const UserAuditEntry({this.action = '', this.description = '', this.created});
+
+  factory UserAuditEntry.fromJson(Map<String, dynamic> json) => UserAuditEntry(
+        action: (json['action'] ?? '').toString(),
+        description: (json['description'] ?? '').toString(),
+        created: DateTime.tryParse((json['created'] ?? '').toString()),
+      );
 }

@@ -27,12 +27,12 @@ class _EmpleadosViewState extends State<EmpleadosView> {
 
   // Iconos para cada slug de permiso
   static IconData _iconFor(String slug) => switch (slug) {
-    RolePermissionSlug.products  => Icons.inventory_2_outlined,
-    RolePermissionSlug.vouchers  => Icons.confirmation_number_outlined,
-    RolePermissionSlug.analytics => Icons.bar_chart_outlined,
-    RolePermissionSlug.team      => Icons.group_outlined,
-    RolePermissionSlug.settings  => Icons.receipt_long_outlined,
-    _                            => Icons.lock_outline,
+    RolePermissionSlug.products        => Icons.inventory_2_outlined,
+    RolePermissionSlug.redemptionCodes => Icons.confirmation_number_outlined,
+    RolePermissionSlug.analytics       => Icons.bar_chart_outlined,
+    RolePermissionSlug.team            => Icons.group_outlined,
+    RolePermissionSlug.settings        => Icons.receipt_long_outlined,
+    _                                  => Icons.lock_outline,
   };
 
   @override
@@ -402,7 +402,7 @@ class _EmpleadosViewState extends State<EmpleadosView> {
           ? defs.expand((d) => d.permissions).toSet().toList()
           : [
               RolePermissionSlug.products,
-              RolePermissionSlug.vouchers,
+              RolePermissionSlug.redemptionCodes,
               RolePermissionSlug.analytics,
               RolePermissionSlug.team,
               RolePermissionSlug.settings,

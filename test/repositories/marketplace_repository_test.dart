@@ -106,14 +106,32 @@ void main() {
       expect(products, isEmpty);
     });
 
-    // NOTA DE COMPORTAMIENTO: ApiClient usa validateStatus (status) => status != null,
-    // por lo que Dio NO lanza en 4xx/5xx. Un 500 con cuerpo no-lista degrada a
-    // lista vacía en lugar de propagar un error a la UI.
-    test('un 500 con HTML degrada a lista vacía (errores HTTP no lanzan)',
+    // El interceptor onResponse del ApiClient convierte toda respuesta >= 400 en
+    // DioException, así que los errores HTTP se propagan a la UI como
+    // ApiException en vez de degradar en silencio a una lista vacía.
+    test('un 500 con HTML lanza ApiException (errores HTTP se propagan)',
         () async {
       mock((opts) => (500, '<html>error</html>'));
-      final products = await repo.fetchProducts();
-      expect(products, isEmpty);
+      await expectLater(
+        () => repo.fetchProducts(),
+        throwsA(isA<ApiException>()),
+      );
+    });
+
+    test('un 400 con el contrato de error expone error_code, message y status',
+        () async {
+      mock((opts) => (400, {
+            'error_code': 'VALIDATION_ERROR',
+            'message': 'Parámetros inválidos',
+            'details': {'store': 'requerido'},
+          }));
+      await expectLater(
+        () => repo.fetchProducts(),
+        throwsA(isA<ApiException>()
+            .having((e) => e.errorCode, 'errorCode', 'VALIDATION_ERROR')
+            .having((e) => e.message, 'message', 'Parámetros inválidos')
+            .having((e) => e.statusCode, 'statusCode', 400)),
+      );
     });
 
     test('un fallo de red genuino sí lanza ApiException', () async {
@@ -161,6 +179,32 @@ void main() {
       final product = await repo.fetchProductDetail('p1');
       expect(product, isNotNull);
       expect(product!.name, 'Detalle');
+    });
+  });
+
+  group('fetchStoreUsers', () {
+    test('desenvuelve el envelope {store_id, members:[...]}', () async {
+      mock((opts) => (200, {
+            'store_id': 1,
+            'members': [
+              {
+                'user_id': 3,
+                'email': 'tienda1@lentend.com',
+                'name': 'Carlos García',
+                'role': 'OWNER',
+                'permissions': ['products', 'team'],
+                'invited_by': null,
+                'joined_at': '2026-07-17T12:26:08.987155Z',
+              },
+            ],
+          }));
+
+      final users = await repo.fetchStoreUsers('1');
+      expect(users, hasLength(1));
+      expect(users.single.id, '3');
+      expect(users.single.name, 'Carlos García');
+      expect(users.single.role, 'OWNER');
+      expect(users.single.invitedBy, isNull);
     });
   });
 }

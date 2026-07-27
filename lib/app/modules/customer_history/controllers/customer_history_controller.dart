@@ -1,14 +1,15 @@
 import 'package:get/get.dart';
 
+import '../../../../utils/app_config.dart';
 import '../../../../utils/dummy_helper.dart';
 import '../../../data/models/order_model.dart';
-import '../../../data/models/voucher_model.dart';
+import '../../../data/models/redemption_code_model.dart';
 import '../../../data/repositories/marketplace_repository.dart';
 import '../../../data/services/auth_service.dart';
 
 class CustomerHistoryController extends GetxController {
-  final RxList<VoucherModel> customerVouchers = <VoucherModel>[].obs;
-  final RxMap<String, int> voucherRatings = <String, int>{}.obs;
+  final RxList<RedemptionCodeModel> customerRedemptionCodes = <RedemptionCodeModel>[].obs;
+  final RxMap<String, int> redemptionCodeRatings = <String, int>{}.obs;
   final RxString walletCode = ''.obs;
   final RxString walletStatus = 'Activa'.obs;
   final RxBool loadingWallet = true.obs;
@@ -72,13 +73,13 @@ class CustomerHistoryController extends GetxController {
     loadingWallet.value = false;
   }
 
-  /// Trae los vouchers del usuario desde GET /api/v1/marketplace/vouchers/.
-  /// Si falla, hace fallback a los vouchers locales (DummyHelper).
+  /// Trae los redemptionCodes del usuario desde GET /api/v1/marketplace/redemptionCodes/.
+  /// Si falla, hace fallback a los redemptionCodes locales (DummyHelper).
   Future<void> _loadCustomerHistory() async {
     loadingHistory.value = true;
     try {
-      final remote = await MarketplaceRepository.instance.fetchVouchers();
-      customerVouchers.assignAll(remote);
+      final remote = await MarketplaceRepository.instance.fetchRedemptionCodes();
+      customerRedemptionCodes.assignAll(remote);
       return;
     } catch (_) {
       // continua con fallback
@@ -86,52 +87,61 @@ class CustomerHistoryController extends GetxController {
       loadingHistory.value = false;
     }
 
+    // En builds reales no se inventa historial: se queda vacío ante fallo.
+    if (!AppConfig.useDummyData) return;
+
     final userEmail =
         AuthService.currentUserEmail ?? 'cliente@marketplace.com';
     final customerId = DummyHelper.customerIdForEmail(userEmail);
-    final values = DummyHelper.vouchers
-        .where((voucher) => voucher.customerUserId == customerId)
+    final values = DummyHelper.redemptionCodes
+        .where((redemptionCode) => redemptionCode.customerUserId == customerId)
         .toList();
 
     if (values.isEmpty) {
       final fallbackCustomerId =
           DummyHelper.customerIdForEmail('cliente@marketplace.com');
-      customerVouchers.assignAll(
-        DummyHelper.vouchers
+      customerRedemptionCodes.assignAll(
+        DummyHelper.redemptionCodes
             .where(
-              (voucher) => voucher.customerUserId == fallbackCustomerId,
+              (redemptionCode) => redemptionCode.customerUserId == fallbackCustomerId,
             )
             .toList(),
       );
       return;
     }
 
-    customerVouchers.assignAll(values);
+    customerRedemptionCodes.assignAll(values);
   }
 
-  List<VoucherModel> get walletMovements {
-    final copy = customerVouchers.toList();
+  List<RedemptionCodeModel> get walletMovements {
+    final copy = customerRedemptionCodes.toList();
     copy.sort((a, b) => b.createdAt.compareTo(a.createdAt));
     return copy;
   }
 
-  String statusLabel(VoucherModel voucher) {
-    if (voucher.isRedeemed) {
-      return 'Canjeado';
+  String statusLabel(RedemptionCodeModel redemptionCode) {
+    if (redemptionCode.isRedeemed) {
+      return 'Entregado';
     }
-    final expiredByDate = voucher.expiresAt != null &&
-        voucher.expiresAt!.isBefore(DateTime.now());
-    if (voucher.isExpired || expiredByDate) {
+    if (redemptionCode.isIncident) {
+      return 'Incidencia';
+    }
+    final expiredByDate = redemptionCode.expiresAt != null &&
+        redemptionCode.expiresAt!.isBefore(DateTime.now());
+    if (redemptionCode.isExpired || expiredByDate) {
       return 'Expirado';
+    }
+    if (redemptionCode.isInProgress) {
+      return 'En proceso';
     }
     return 'Pendiente';
   }
 
-  String remainingTime(VoucherModel voucher) {
-    if (statusLabel(voucher) != 'Pendiente' || voucher.expiresAt == null) {
+  String remainingTime(RedemptionCodeModel redemptionCode) {
+    if (statusLabel(redemptionCode) != 'Pendiente' || redemptionCode.expiresAt == null) {
       return '-';
     }
-    final diff = voucher.expiresAt!.difference(DateTime.now());
+    final diff = redemptionCode.expiresAt!.difference(DateTime.now());
     if (diff.isNegative) {
       return 'Expirado';
     }
@@ -140,24 +150,24 @@ class CustomerHistoryController extends GetxController {
     return '${days}d ${hours}h restantes';
   }
 
-  String discountText(VoucherModel voucher) {
-    return '${voucher.discountPercent.toStringAsFixed(0)}%';
+  String discountText(RedemptionCodeModel redemptionCode) {
+    return '${redemptionCode.discountPercent.toStringAsFixed(0)}%';
   }
 
-  String productNameFor(VoucherModel voucher) {
-    return voucher.productName ?? DummyHelper.productNameById(voucher.productId);
+  String productNameFor(RedemptionCodeModel redemptionCode) {
+    return redemptionCode.productName ?? DummyHelper.productNameById(redemptionCode.productId);
   }
 
-  bool canRate(VoucherModel voucher) {
-    return voucher.isRedeemed;
+  bool canRate(RedemptionCodeModel redemptionCode) {
+    return redemptionCode.isRedeemed;
   }
 
-  int ratingFor(String voucherId) {
-    return voucherRatings[voucherId] ?? 0;
+  int ratingFor(String redemptionCodeId) {
+    return redemptionCodeRatings[redemptionCodeId] ?? 0;
   }
 
-  void rateVoucher(String voucherId, int rating) {
-    voucherRatings[voucherId] = rating;
-    voucherRatings.refresh();
+  void rateRedemptionCode(String redemptionCodeId, int rating) {
+    redemptionCodeRatings[redemptionCodeId] = rating;
+    redemptionCodeRatings.refresh();
   }
 }

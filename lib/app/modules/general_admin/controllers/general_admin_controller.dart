@@ -1,11 +1,14 @@
 import 'dart:math';
 
 import 'package:get/get.dart';
+import 'package:image_picker/image_picker.dart';
 
+import '../../../../utils/app_config.dart';
 import '../../../../utils/dummy_helper.dart';
 import '../../../components/custom_snackbar.dart';
 import '../../../data/models/admin_user_model.dart';
 import '../../../data/models/audit_log_model.dart';
+import '../../../data/models/campaign_model.dart';
 import '../../../data/models/category_model.dart';
 import '../../../data/models/kybc_stats_model.dart';
 import '../../../data/models/sensitive_policy_model.dart';
@@ -56,6 +59,10 @@ class GeneralAdminController extends GetxController {
 
   // Backoffice — gestión de usuarios
   final RxList<AdminUserModel> adminUsers = <AdminUserModel>[].obs;
+  // Campañas promocionales (superadmin). La vista solo lista por ahora; el
+  // crear/editar/subir banner se cablea después con _repo.createCampaign etc.
+  final RxList<CampaignModel> campaigns = <CampaignModel>[].obs;
+  final RxBool isLoadingCampaigns = false.obs;
   final Rx<AdminUserModel?> selectedUser = Rx<AdminUserModel?>(null);
   final RxList<AuditLogModel> auditLog = <AuditLogModel>[].obs;
   final RxBool isLoadingUser = false.obs;
@@ -144,8 +151,11 @@ class GeneralAdminController extends GetxController {
   @override
   void onInit() {
     super.onInit();
-    stores.assignAll(DummyHelper.stores);
-    storeUsers.assignAll(DummyHelper.storeUsers);
+    if (AppConfig.useDummyData) {
+      // Bootstrap de demo; en real se espera al backend (sin tiendas ficticias).
+      stores.assignAll(DummyHelper.stores);
+      storeUsers.assignAll(DummyHelper.storeUsers);
+    }
     _initUserProfile();
     _calculateMetrics();
     _loadFromBackend();
@@ -163,7 +173,8 @@ class GeneralAdminController extends GetxController {
     isLoading.value = true;
 
     await Future.wait<void>([
-      _repo.fetchStores().then((s) { if (s.isNotEmpty) stores.assignAll(s); }).catchError((_) {}),
+      _loadStoresForBackoffice(),
+      loadAdminUsers(),
       _repo.fetchCategories().then((c) { if (c.isNotEmpty) categories.assignAll(c); }).catchError((_) {}),
       _repo.fetchDashboardStats().then((s) { if (s != null) _applyStats(s); }).catchError((_) {}),
       _repo.fetchAdminAlerts().then((a) { if (a.isNotEmpty) criticalAlerts.assignAll(a); }).catchError((_) {}),
@@ -177,6 +188,126 @@ class GeneralAdminController extends GetxController {
 
     _calculateMetrics();
     isLoading.value = false;
+  }
+
+  /// Carga las tiendas del backoffice: primero TODAS vía el endpoint admin;
+  /// si ese no responde, cae al catálogo público (solo publicadas).
+  Future<void> _loadStoresForBackoffice() async {
+    try {
+      final all = await _repo.fetchAdminStores();
+      if (all.isNotEmpty) {
+        stores.assignAll(all);
+        return;
+      }
+    } catch (_) {
+      // Endpoint admin no disponible/erróneo: intentar el público.
+    }
+    try {
+      final published = await _repo.fetchStores();
+      if (published.isNotEmpty) stores.assignAll(published);
+    } catch (_) {}
+  }
+
+  // ──────────── CAMPAÑAS PROMOCIONALES ────────────
+
+  /// Lista las campañas del superadmin. GET /admin/campaigns/ (solo lectura por
+  /// ahora). Un store admin recibe 403 → se degrada sin ruido.
+  Future<void> loadCampaigns() async {
+    if (isLoadingCampaigns.value) return;
+    isLoadingCampaigns.value = true;
+    try {
+      final list = await _repo.fetchCampaigns();
+      campaigns.assignAll(list);
+    } on ApiException catch (e) {
+      if (!e.isUnavailable && e.statusCode != 403) {
+        CustomSnackBar.showCustomErrorSnackBar(title: 'Error', message: e.message);
+      }
+    } catch (_) {
+      // silencio: la pantalla queda vacía
+    } finally {
+      isLoadingCampaigns.value = false;
+    }
+  }
+
+  final RxBool isSavingCampaign = false.obs;
+
+  /// Crea (o edita, si [editId] no es null) una campaña y, si se eligió una
+  /// [image], la sube DESPUÉS con el id devuelto (la subida necesita el id).
+  /// Devuelve true si se guardó. Los errores del backend se muestran con su
+  /// mensaje real (contrato de error), útil para depurar el payload al probar.
+  Future<bool> submitCampaign(
+    Map<String, dynamic> payload, {
+    XFile? image,
+    String? editId,
+  }) async {
+    if (isSavingCampaign.value) return false;
+    isSavingCampaign.value = true;
+    try {
+      final CampaignModel? saved = (editId != null && editId.isNotEmpty)
+          ? await _repo.updateCampaign(editId, payload)
+          : await _repo.createCampaign(payload);
+      final id = saved?.id.isNotEmpty == true ? saved!.id : (editId ?? '');
+      String? bannerUrl;
+      if (image != null && id.isNotEmpty) {
+        bannerUrl = await _repo.uploadCampaignImage(id, image);
+      }
+      await loadCampaigns();
+      // Si se subió banner pero el listado no lo devolvió, aplícalo localmente
+      // para que se vea al instante.
+      if (bannerUrl != null && bannerUrl.isNotEmpty) {
+        final i = campaigns.indexWhere((c) => c.id == id);
+        if (i != -1 &&
+            (campaigns[i].bannerImage == null ||
+                campaigns[i].bannerImage!.isEmpty)) {
+          campaigns[i] = campaigns[i].copyWith(bannerImage: bannerUrl);
+        }
+      }
+      CustomSnackBar.showCustomSnackBar(
+        title: editId != null ? 'Campaña actualizada' : 'Campaña creada',
+        message: 'Se guardó correctamente.',
+      );
+      return true;
+    } on ApiException catch (e) {
+      CustomSnackBar.showCustomErrorSnackBar(
+          title: 'No se pudo guardar', message: _formatApiError(e));
+    } catch (_) {
+      CustomSnackBar.showCustomErrorSnackBar(
+          title: 'Error', message: 'No se pudo guardar la campaña.');
+    } finally {
+      isSavingCampaign.value = false;
+    }
+    return false;
+  }
+
+  /// Formatea el error del backend incluyendo los errores por campo del
+  /// contrato (`details`), para ver exactamente qué campo rechazó al probar.
+  String _formatApiError(ApiException e) {
+    if (e.details.isEmpty) return e.message;
+    final fields = e.details.entries.map((x) {
+      final v = x.value;
+      final val = v is List ? v.join(', ') : v.toString();
+      return '${x.key}: $val';
+    }).join('  ·  ');
+    return '${e.message}\n$fields';
+  }
+
+  /// Elimina una campaña (DELETE /admin/campaigns/{id}/) con update optimista.
+  Future<void> removeCampaign(String id) async {
+    final idx = campaigns.indexWhere((c) => c.id == id);
+    final backup = idx != -1 ? campaigns[idx] : null;
+    if (idx != -1) campaigns.removeAt(idx);
+    try {
+      await _repo.deleteCampaign(id);
+      CustomSnackBar.showCustomSnackBar(
+          title: 'Campaña eliminada', message: 'Se eliminó correctamente.');
+    } on ApiException catch (e) {
+      if (backup != null) campaigns.insert(idx, backup);
+      CustomSnackBar.showCustomErrorSnackBar(title: 'Error', message: e.message);
+    } catch (_) {
+      if (backup != null) campaigns.insert(idx, backup);
+      CustomSnackBar.showCustomErrorSnackBar(
+          title: 'Error', message: 'No se pudo eliminar la campaña.');
+    }
   }
 
   void _applyOrderStats(OrdersStats s) {
@@ -379,8 +510,38 @@ class GeneralAdminController extends GetxController {
 
   void _calculateMetrics() {
     if (totalStores.value == 0) totalStores.value = stores.length;
-    if (totalStoreUsers.value == 0) totalStoreUsers.value = storeUsers.length;
+    // Conteo de usuarios: la lista real del backend (adminUsers), no el dummy.
+    if (totalStoreUsers.value == 0) totalStoreUsers.value = adminUsers.length;
     if (totalCategories.value == 0) totalCategories.value = categories.length;
+  }
+
+  final RxBool isCreatingStore = false.obs;
+
+  /// Da de alta una tienda nueva (POST /marketplace/admin/stores/). Devuelve
+  /// true si se creó. Los errores del backend se muestran con su detalle por
+  /// campo (contrato de error) para saber qué falta al probar.
+  Future<bool> createStore(Map<String, dynamic> payload) async {
+    if (isCreatingStore.value) return false;
+    isCreatingStore.value = true;
+    try {
+      final created = await _repo.adminCreateStore(payload);
+      if (created != null) {
+        stores.insert(0, created);
+        _calculateMetrics();
+        CustomSnackBar.showCustomSnackBar(
+            title: 'Tienda creada', message: 'La tienda se guardó en el backend.');
+        return true;
+      }
+    } on ApiException catch (e) {
+      CustomSnackBar.showCustomErrorSnackBar(
+          title: 'No se pudo crear', message: _formatApiError(e));
+    } catch (_) {
+      CustomSnackBar.showCustomErrorSnackBar(
+          title: 'Error', message: 'No se pudo crear la tienda.');
+    } finally {
+      isCreatingStore.value = false;
+    }
+    return false;
   }
 
   Future<void> addStore(StoreModel store) async {
@@ -546,6 +707,11 @@ class GeneralAdminController extends GetxController {
           kycRejectionReason: kyc?['rejection_reason'] ?? user.kycRejectionReason,
           deactivationStatus: user.deactivationStatus,
           deactivationDate: user.deactivationDate,
+          // Conservar los anidados del detalle (se pierden si no se copian).
+          storeMemberships: user.storeMemberships,
+          consents: user.consents,
+          gdprRequests: user.gdprRequests,
+          recentAudit: user.recentAudit,
         );
         selectedUser.value = mergedUser;
       }
@@ -912,16 +1078,54 @@ class GeneralAdminController extends GetxController {
     } catch (_) {}
   }
 
-  Future<String?> uploadSelectedStoreBanner(String storeId, dynamic file) async {
+  Future<String?> uploadSelectedStoreBanner(String storeId, XFile file) async {
     try {
-      return await _repo.uploadStoreBanner(storeId, file);
-    } catch (_) { return null; }
+      final url = await _repo.uploadStoreBanner(storeId, file);
+      // Recarga la ficha para traer el estado real del backend.
+      await loadStoreDetail(storeId);
+      // Si el GET no devolvió el banner nuevo, aplícalo con la URL de la subida.
+      final s = selectedStore.value;
+      if (url != null && url.isNotEmpty && s != null && s.banner.isEmpty) {
+        selectedStore.value = s.copyWith(banner: url);
+      }
+      CustomSnackBar.showCustomSnackBar(
+          title: 'Banner actualizado',
+          message: (url != null && url.isNotEmpty)
+              ? 'La imagen se subió correctamente.'
+              : 'Subida OK, pero el servidor no devolvió la URL de la imagen.');
+      return url;
+    } on ApiException catch (e) {
+      CustomSnackBar.showCustomErrorSnackBar(
+          title: 'Error al subir banner', message: _formatApiError(e));
+    } catch (_) {
+      CustomSnackBar.showCustomErrorSnackBar(
+          title: 'Error', message: 'No se pudo subir el banner.');
+    }
+    return null;
   }
 
-  Future<String?> uploadSelectedStoreLogo(String storeId, dynamic file) async {
+  Future<String?> uploadSelectedStoreLogo(String storeId, XFile file) async {
     try {
-      return await _repo.uploadStoreLogo(storeId, file);
-    } catch (_) { return null; }
+      final url = await _repo.uploadStoreLogo(storeId, file);
+      await loadStoreDetail(storeId);
+      final s = selectedStore.value;
+      if (url != null && url.isNotEmpty && s != null && s.logoUrl.isEmpty) {
+        selectedStore.value = s.copyWith(logoUrl: url);
+      }
+      CustomSnackBar.showCustomSnackBar(
+          title: 'Logo actualizado',
+          message: (url != null && url.isNotEmpty)
+              ? 'La imagen se subió correctamente.'
+              : 'Subida OK, pero el servidor no devolvió la URL de la imagen.');
+      return url;
+    } on ApiException catch (e) {
+      CustomSnackBar.showCustomErrorSnackBar(
+          title: 'Error al subir logo', message: _formatApiError(e));
+    } catch (_) {
+      CustomSnackBar.showCustomErrorSnackBar(
+          title: 'Error', message: 'No se pudo subir el logo.');
+    }
+    return null;
   }
 
   // ──────────── KYBC COMPLIANCE ────────────
@@ -1015,6 +1219,13 @@ class GeneralAdminController extends GetxController {
           policies.where((p) => p.status == 'pending').length;
       final cov = _parseDouble(stats['coverage_pct'] ?? stats['coverage'] ?? stats['cobertura']);
       policiesCoverage.value = cov ?? 100.0;
+    } on ApiException catch (e) {
+      // `/admin/policies/` aún no existe en el backend: degradar a estado vacío
+      // en vez de un error crudo. Cualquier otro fallo sí se muestra.
+      sensitivePolicies.clear();
+      if (!e.isUnavailable) {
+        CustomSnackBar.showCustomErrorSnackBar(title: 'Error', message: e.message);
+      }
     } catch (e) {
       CustomSnackBar.showCustomErrorSnackBar(title: 'Error', message: e.toString());
     } finally {
@@ -1034,7 +1245,11 @@ class GeneralAdminController extends GetxController {
             message: 'Los cambios se guardaron correctamente.');
       }
     } on ApiException catch (e) {
-      CustomSnackBar.showCustomErrorSnackBar(title: 'Error', message: e.message);
+      CustomSnackBar.showCustomErrorSnackBar(
+          title: 'Error',
+          message: e.isUnavailable
+              ? 'La gestión de políticas aún no está disponible.'
+              : e.message);
     } catch (e) {
       CustomSnackBar.showCustomErrorSnackBar(title: 'Error', message: e.toString());
     }
@@ -1050,7 +1265,11 @@ class GeneralAdminController extends GetxController {
             title: 'Política creada', message: 'La política fue creada correctamente.');
       }
     } on ApiException catch (e) {
-      CustomSnackBar.showCustomErrorSnackBar(title: 'Error', message: e.message);
+      CustomSnackBar.showCustomErrorSnackBar(
+          title: 'Error',
+          message: e.isUnavailable
+              ? 'La gestión de políticas aún no está disponible.'
+              : e.message);
     } catch (e) {
       CustomSnackBar.showCustomErrorSnackBar(title: 'Error', message: e.toString());
     }

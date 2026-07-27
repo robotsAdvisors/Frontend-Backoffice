@@ -20,6 +20,16 @@ class ApiConfig {
   /// URL completa base para las peticiones.
   static String get apiBaseUrl => '$baseUrl$apiPrefix';
 
+  /// Convierte una URL de media relativa (`/media/x.jpg`) en absoluta usando el
+  /// host del backend. Deja intactas las que ya son absolutas (`http...`).
+  /// Necesario en web: `NetworkImage('/media/x')` resolvería contra el origen
+  /// del navegador (localhost) en vez del backend → 404.
+  static String absoluteMedia(String? url) {
+    if (url == null || url.isEmpty) return '';
+    if (url.startsWith('http')) return url;
+    return url.startsWith('/') ? '$baseUrl$url' : '$baseUrl/$url';
+  }
+
   // ---- Endpoints ----
   // Auth
   // NOTE: the backend (DRF) defines all `/auth/...` routes WITH a trailing
@@ -37,7 +47,7 @@ class ApiConfig {
 
   // Profile
   static const String me = '/users/me';
-  static const String mePreferences = '/v1/users/me/preferences';
+  static const String mePreferences = '/users/me/preferences/';
 
   // Marketplace - catalogo publico
   static const String categories = '/marketplace/categories/';
@@ -45,17 +55,26 @@ class ApiConfig {
   static const String products = '/marketplace/products/';
 
   // Marketplace - autenticado
-  static const String vouchers = '/marketplace/vouchers/';
-  static const String vouchersPending = '/marketplace/vouchers/pending/';
-  static const String vouchersCreateOnline = '/marketplace/vouchers/create-online/';
-  static const String vouchersValidate  = '/marketplace/vouchers/validate/';
-  static const String vouchersPreview   = '/marketplace/vouchers/preview/';
-  static String voucherIncident(String id)        => '/marketplace/vouchers/$id/incident/';
-  static String voucherInitiatePayment(String code) => '/marketplace/vouchers/$code/initiate-payment/';
+  static const String redemptionCodes = '/marketplace/redemption-codes/';
+  // Canjes del COMERCIO (backoffice de tienda). La genérica de arriba está
+  // scopeada al usuario: sirve para el historial del cliente, NO para la tienda.
+  static const String storeRedemptionCodes = '/marketplace/stores/redemption-codes/';
+  static const String redemptionCodesPending = '/marketplace/redemption-codes/pending/';
+  static const String redemptionCodesCreateOnline = '/marketplace/redemption-codes/online/';
+  // La validación de un código la hace la tienda, y cuelga de `stores/`.
+  static const String redemptionCodesValidate  = '/marketplace/stores/redemption-codes/validation/';
+  // Entrega (ST-CJ-03): segundo paso del mostrador. Aquí el backend consume
+  // los puntos bloqueados y el código pasa a DELIVERED.
+  static String redemptionCodeDelivery(String id)        => '/marketplace/stores/redemption-codes/$id/delivery/';
+  static const String redemptionCodesPreview   = '/marketplace/redemption-codes/preview/';
+  // La incidencia del mostrador cuelga de `stores/`: es la tienda quien la
+  // registra sobre un canje suyo (DG-07), no el usuario sobre el propio.
+  static String redemptionCodeIncident(String id)        => '/marketplace/stores/redemption-codes/$id/incident/';
+  static String redemptionCodeInitiatePayment(String code) => '/marketplace/redemption-codes/$code/payment-intent/';
   static const String orders      = '/marketplace/orders/';
-  static const String storeOrders = '/marketplace/store/orders/';
-  static const String purchaseWithRedeem = '/marketplace/purchase/with-redeem/';
-  static const String purchaseWithoutRedeem = '/marketplace/purchase/without-redeem/';
+  static const String storeOrders = '/marketplace/stores/orders/';
+  static const String purchaseWithRedeem = '/marketplace/purchases/with-redemption/';
+  static const String purchaseWithoutRedeem = '/marketplace/purchases/without-redemption/';
 
   // Marketplace - admin
   static const String adminCategories    = '/marketplace/admin/categories/';
@@ -68,13 +87,13 @@ class ApiConfig {
   static const String adminDashboardStats = '/marketplace/admin/dashboard/stats/';
   static const String adminAlerts         = '/marketplace/admin/alerts/';
   static const String adminAuditLog       = '/marketplace/admin/audit-log/';
-  static const String adminSystemHealth   = '/marketplace/admin/system/health/';
+  static const String adminSystemHealth   = '/marketplace/admin/system-health/';
   static const String adminDomainStats    = '/marketplace/admin/domain-stats/';
 
   // Marketplace - analytics
-  static const String analyticsVouchersDaily    = '/marketplace/analytics/vouchers/daily/';
+  static const String analyticsRedemptionCodesDaily    = '/marketplace/analytics/redemption-codes/daily/';
   static const String analyticsSummary          = '/marketplace/analytics/summary/';
-  static const String analyticsVouchersByStatus = '/marketplace/analytics/vouchers/by-status/';
+  static const String analyticsRedemptionCodesByStatus = '/marketplace/analytics/redemption-codes/by-status/';
   static const String analyticsTopRedeemed      = '/marketplace/analytics/products/top-redeemed/';
 
   // Marketplace - store detail, activity & management
@@ -82,8 +101,8 @@ class ApiConfig {
   static String storeSettings(String id) => '/marketplace/stores/$id/settings/';
   static String storeActivity(String id) => '/marketplace/stores/$id/activity/';
   static String storeMonthlyGoal(String id)  => '/marketplace/stores/$id/monthly-goal/';
-  static String storeBannerUpload(String id) => '/marketplace/stores/$id/upload-banner/';
-  static String storeLogoUpload(String id)   => '/marketplace/stores/$id/upload-logo/';
+  static String storeBannerUpload(String id) => '/marketplace/stores/$id/banner/';
+  static String storeLogoUpload(String id)   => '/marketplace/stores/$id/logo/';
 
   // Location / Geocoding
   static const String locationReverseGeocode = '/location/reverse-geocode/';
@@ -93,7 +112,7 @@ class ApiConfig {
   static String reviewDetail(String id)     => '/marketplace/reviews/$id/';
   static String reviewReply(String id)      => '/marketplace/reviews/$id/reply/';
   static String reviewReport(String id)     => '/marketplace/reviews/$id/report/';
-  static String reviewHide(String id)       => '/marketplace/reviews/$id/hide/';
+  static String reviewHide(String id)       => '/marketplace/reviews/$id/visibility/';
   static String storePIN(String id) => '/marketplace/stores/$id/pin/';
   static String storePINRegenerate(String id) => '/marketplace/stores/$id/pin/regenerate/';
   static String storeSecurityLog(String id) => '/marketplace/stores/$id/security-log/';
@@ -112,15 +131,18 @@ class ApiConfig {
   static String gdprRequestDetail(String id) => '/admin/gdpr/requests/$id/';
 
   // Backoffice — Support Tickets
-  static const String adminTickets          = '/admin/tickets/';
-  static const String adminTicketsCreate    = '/admin/tickets/create/';
-  static const String adminTicketCategories = '/admin/ticket-categories/';
-  static const String adminAgents           = '/admin/agents/';
-  static String adminTicketDetail(String id)   => '/admin/tickets/$id/';
-  static String adminTicketMessages(String id) => '/admin/tickets/$id/messages/';
-  static String adminTicketEscalate(String id) => '/admin/tickets/$id/escalate/';
-  static String adminTicketClose(String id)    => '/admin/tickets/$id/close/';
-  static String adminTicketReassign(String id) => '/admin/tickets/$id/reassign/';
+  // Cuelgan del urlconf del marketplace (`/marketplace/admin/…`), no del de
+  // accounts (`/admin/…`), que es donde viven usuarios, KYC, GDPR y legal.
+  static const String adminTickets          = '/marketplace/admin/tickets/';
+  static const String adminTicketsCreate    = '/marketplace/admin/tickets/';
+  static const String adminTicketCategories = '/marketplace/admin/ticket-categories/';
+  static const String adminAgents           = '/marketplace/admin/agents/';
+  // El detalle (GET/PATCH) YA existe: AdminTicketDetailView. Escalar, cerrar y
+  // reasignar se hacen por ese PATCH (status / assigned_to), no por rutas de
+  // acción dedicadas. `messages/` sigue SIN exponerse: enviar mensaje da 404
+  // hasta que el backend lo implemente (la UI lo degrada a "no disponible").
+  static String adminTicketDetail(String id)   => '/marketplace/admin/tickets/$id/';
+  static String adminTicketMessages(String id) => '/marketplace/admin/tickets/$id/messages/';
 
   // Backoffice — Admin User Management
   static const String adminUsers = '/admin/users/';
@@ -135,6 +157,15 @@ class ApiConfig {
   static String adminUserKyc(String id) => '/admin/users/$id/kyc/';
   static String adminUserDeactivation(String id) => '/admin/users/$id/deactivation/';
 
+  // Backoffice — Antifraude (points_admin: /api/v1/admin/...)
+  // BG-06: cola de contribuciones sospechosas + decisión del moderador.
+  static const String moderationQueue = '/admin/moderation/contributions/';
+  static String moderationDecision(String kind, String id) =>
+      '/admin/moderation/contributions/$kind/$id/';
+  // BG-07: umbrales antifraude (CRUD del Super Admin).
+  static const String antifraudRules = '/admin/antifraud-rules/';
+  static String antifraudRuleDetail(int id) => '/admin/antifraud-rules/$id/';
+
   // Backoffice — Admin Store Management
   static String adminStoreDetail(String id) => '/marketplace/admin/stores/$id/';
 
@@ -145,6 +176,7 @@ class ApiConfig {
   static String adminUserComplianceHistory(String id) => '/admin/users/$id/compliance/history/';
 
   // Backoffice — Políticas Sensibles
+  // OJO: sin contraparte en el backend (no hay ningún urlconf `policies/`).
   static const String adminPolicies      = '/admin/policies/';
   static const String adminPoliciesStats = '/admin/policies/stats/';
   static String adminPolicyDetail(String id) => '/admin/policies/$id/';
@@ -153,11 +185,11 @@ class ApiConfig {
   static const String adminLegalConsents = '/admin/legal/consents/';
   static String adminLegalConsentDetail(String id) => '/admin/legal/consents/$id/';
   static const String adminLegalDocuments = '/admin/legal/documents/';
-  static const String adminLegalStats = '/admin/legal/stats/';
+  static const String adminLegalStats = '/admin/legal/consents/stats/';
   static String adminLegalConsentAction(String id) => '/admin/legal/consents/$id/action/';
   // Product image upload
   static const String adminProductUploadImage =
-      '/marketplace/admin/products/upload-image/';
+      '/marketplace/admin/products/image/';
   static const String adminProductExport =
       '/marketplace/admin/products/export/';
 
@@ -165,21 +197,38 @@ class ApiConfig {
   static String storeUsers(String id) => '/marketplace/stores/$id/users/';
   static String storeUserDetail(String storeId, String userId) =>
       '/marketplace/stores/$storeId/users/$userId/';
-  static String storeRolesPermissions(String id) => '/marketplace/stores/$id/roles/permissions/';
-  static String storeChangePIN(String id) => '/marketplace/stores/$id/change-pin/';
+  static String storeRolesPermissions(String id) => '/marketplace/stores/$id/roles/';
+  static String storeChangePIN(String id) => '/marketplace/stores/$id/pin/change/';
   static String storeSecurity(String id) => '/marketplace/stores/$id/security/';
 
-  // Withdrawals
-  static const String withdrawals = '/wallet/withdrawals/';
-  static const String withdrawalsConfig = '/wallet/withdrawals/config/';
+  // Withdrawals — viven en `credits/`, no en `wallet/` (que solo sirve la
+  // tarjeta virtual).
+  static const String withdrawals = '/credits/withdrawals/';
+  static const String withdrawalsConfig = '/credits/withdrawals/config/';
 
   // Virtual Card
   static const String virtualCard = '/wallet/virtual-card/';
 
-  // Backoffice — Stripe Disputes & Refunds
-  static const String adminStripeDisputes      = '/admin/stripe/disputes/';
-  static const String adminStripeDisputeStats  = '/admin/stripe/disputes/stats/';
-  static String adminStripeDisputeDetail(String id) => '/admin/stripe/disputes/$id/';
-  static String adminStripeDisputeAction(String id) => '/admin/stripe/disputes/$id/action/';
-  static const String adminStripeRefunds       = '/admin/stripe/refunds/';
+  // Backoffice — expedientes de disputa y reembolsos (BG-04/BG-05).
+  // Cuelgan de `/admin/` (points_admin), no de `/admin/stripe/`, que no existe.
+  // ⚠️ La respuesta separa el estado del EXPEDIENTE (`case`) del estado en
+  // Stripe (`stripe`), en dos bloques; StripeDisputeModel aún los lee planos.
+  static const String adminStripeDisputes      = '/admin/disputes/';
+  static const String adminStripeDisputeStats  = '/admin/disputes/stats/';
+  static String adminStripeDisputeDetail(String id) => '/admin/disputes/$id/';
+  static String adminStripeDisputeAction(String id) => '/admin/disputes/$id/action/';
+  static const String adminStripeRefunds       = '/admin/refunds/';
+
+  // Backoffice — Campañas promocionales (superadmin / IsSuperAdmin).
+  // OJO: cuelgan de `/admin/` (points_admin), NO de `/marketplace/admin/`
+  // (que da 404). El listado es un array pelado (sin results/meta).
+  static const String adminCampaigns = '/admin/campaigns/';
+  static String adminCampaignDetail(String id)  => '/admin/campaigns/$id/';
+  // Subida del banner (multipart, campo `image`). Necesita el id → primero se
+  // crea la campaña y con el id devuelto se sube la imagen.
+  static String adminCampaignImage(String id)   => '/admin/campaigns/$id/image/';
+  // Analítica de rendimiento de la campaña (puntos, alcance, presupuesto).
+  static String adminCampaignImpact(String id)  => '/admin/campaigns/$id/impact/';
+  // Vista previa: mismo serializer que ve el usuario/tienda en el marketplace.
+  static String adminCampaignPreview(String id) => '/admin/campaigns/$id/preview/';
 }

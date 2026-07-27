@@ -1,12 +1,20 @@
-enum VoucherStatus {
+enum RedemptionCodeStatus {
   pending,
   paid,
+  // El mostrador validó el código; el usuario está delante (ST-CJ-02).
+  inProgress,
+  // Entregado: aquí se consumen los puntos (ST-CJ-03). Sustituye a `redeemed`,
+  // que el backend deja como alias deprecado.
+  delivered,
+  // El mostrador no pudo entregar: sin stock, discrepancia… (DG-07).
+  incident,
   redeemed,
   expired,
   cancelled,
+  rejected,
 }
 
-class VoucherModel {
+class RedemptionCodeModel {
   final String id;
   final String campaignId;
   final String storeId;
@@ -17,7 +25,7 @@ class VoucherModel {
   final DateTime? redeemedAt;
   final DateTime? expiresAt;
   final double discountPercent;
-  final VoucherStatus status;
+  final RedemptionCodeStatus status;
   final int pointsUsed;
   final String redeemType; // 'ONLINE' | 'IN_STORE'
   final String? qrCode;
@@ -34,7 +42,7 @@ class VoucherModel {
   final bool paymentVerified;
   final int? daysLeft;           // calculado por backend en preview
 
-  VoucherModel({
+  RedemptionCodeModel({
     required this.id,
     required this.campaignId,
     required this.storeId,
@@ -45,7 +53,7 @@ class VoucherModel {
     this.redeemedAt,
     this.expiresAt,
     this.discountPercent = 0,
-    this.status = VoucherStatus.pending,
+    this.status = RedemptionCodeStatus.pending,
     this.pointsUsed = 0,
     this.redeemType = 'ONLINE',
     this.qrCode,
@@ -66,16 +74,68 @@ class VoucherModel {
   // Compatibility alias for old UI fields.
   DateTime get createdAt => issuedAt;
 
-  bool get isRedeemed => status == VoucherStatus.redeemed;
+  /// Refresca estado/id tras validar o entregar sin perder los datos ricos que
+  /// trajo el preview (nombre de producto, cliente…), que las respuestas de
+  /// validation/ y delivery/ no reenvían completos.
+  RedemptionCodeModel copyWith({
+    String? id,
+    RedemptionCodeStatus? status,
+    DateTime? redeemedAt,
+  }) {
+    return RedemptionCodeModel(
+      id: id ?? this.id,
+      campaignId: campaignId,
+      storeId: storeId,
+      customerUserId: customerUserId,
+      productId: productId,
+      code: code,
+      issuedAt: issuedAt,
+      redeemedAt: redeemedAt ?? this.redeemedAt,
+      expiresAt: expiresAt,
+      discountPercent: discountPercent,
+      status: status ?? this.status,
+      pointsUsed: pointsUsed,
+      redeemType: redeemType,
+      qrCode: qrCode,
+      productName: productName,
+      productSku: productSku,
+      productImageUrl: productImageUrl,
+      storeName: storeName,
+      customerName: customerName,
+      customerEmail: customerEmail,
+      customerAlias: customerAlias,
+      customerBadge: customerBadge,
+      paymentMethod: paymentMethod,
+      paymentAmountEur: paymentAmountEur,
+      paymentVerified: paymentVerified,
+      daysLeft: daysLeft,
+    );
+  }
+
+  /// Entregado y puntos consumidos. El backend nuevo manda `DELIVERED`;
+  /// `redeemed` se mantiene como alias deprecado durante una release.
+  bool get isDelivered =>
+      status == RedemptionCodeStatus.delivered ||
+      status == RedemptionCodeStatus.redeemed;
+
+  /// Alias histórico usado por la UI antigua (conteos, labels). Ahora reconoce
+  /// también `DELIVERED`, que es la entrega real del flujo nuevo.
+  bool get isRedeemed => isDelivered;
+
+  /// El mostrador ya validó el código y el canje está en curso (IN_PROGRESS):
+  /// es el estado desde el que se habilita el botón de entregar.
+  bool get isInProgress => status == RedemptionCodeStatus.inProgress;
+
+  bool get isIncident => status == RedemptionCodeStatus.incident;
 
   bool get isExpired {
-    if (status == VoucherStatus.expired) {
+    if (status == RedemptionCodeStatus.expired) {
       return true;
     }
     return expiresAt != null && expiresAt!.isBefore(DateTime.now());
   }
 
-  factory VoucherModel.fromJson(Map<String, dynamic> json) {
+  factory RedemptionCodeModel.fromJson(Map<String, dynamic> json) {
     final user = json['user'];
     final store = json['store'];
     final product = json['product'];
@@ -89,7 +149,7 @@ class VoucherModel {
         ? (product['id']?.toString() ?? '')
         : (product?.toString() ?? '');
 
-    return VoucherModel(
+    return RedemptionCodeModel(
       id: json['id']?.toString() ?? '',
       campaignId: (json['campaign_id'] ?? '').toString(),
       storeId: storeId,
@@ -144,19 +204,27 @@ class VoucherModel {
     return DateTime.tryParse(v.toString());
   }
 
-  static VoucherStatus _parseStatus(dynamic v) {
+  static RedemptionCodeStatus _parseStatus(dynamic v) {
     switch ((v ?? '').toString().toUpperCase()) {
       case 'PAID':
-        return VoucherStatus.paid;
+        return RedemptionCodeStatus.paid;
+      case 'IN_PROGRESS':
+        return RedemptionCodeStatus.inProgress;
+      case 'DELIVERED':
+        return RedemptionCodeStatus.delivered;
+      case 'INCIDENT':
+        return RedemptionCodeStatus.incident;
       case 'REDEEMED':
-        return VoucherStatus.redeemed;
+        return RedemptionCodeStatus.redeemed;
       case 'EXPIRED':
-        return VoucherStatus.expired;
+        return RedemptionCodeStatus.expired;
       case 'CANCELLED':
-        return VoucherStatus.cancelled;
+        return RedemptionCodeStatus.cancelled;
+      case 'REJECTED':
+        return RedemptionCodeStatus.rejected;
       case 'PENDING':
       default:
-        return VoucherStatus.pending;
+        return RedemptionCodeStatus.pending;
     }
   }
 }

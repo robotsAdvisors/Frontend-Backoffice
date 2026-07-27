@@ -105,14 +105,8 @@ class _AddProductViewState extends State<AddProductView> {
 
     setState(() => _isSaving = true);
 
-    // Upload image if a new one was picked.
-    if (_selectedImage != null) {
-      final uploaded = await _ctrl.uploadProductImage(_selectedImage!);
-      if (uploaded != null) {
-        _imageUrlCtrl.text = uploaded;
-      }
-    }
-
+    // 1) Crear/editar el producto PRIMERO (el endpoint de imagen exige product_id).
+    String? productId;
     if (_editingProduct != null) {
       final payload = <String, dynamic>{
         'name': name,
@@ -122,7 +116,9 @@ class _AddProductViewState extends State<AddProductView> {
         'stock': _stock,
         if (_selectedCategory != null && _selectedCategory!.isNotEmpty)
           'category': _selectedCategory,
-        if (_imageUrlCtrl.text.trim().isNotEmpty)
+        // Solo se conserva la imagen actual si NO se eligió una nueva (que se
+        // sube aparte con el product_id más abajo).
+        if (_selectedImage == null && _imageUrlCtrl.text.trim().isNotEmpty)
           'image_url': _imageUrlCtrl.text.trim(),
         if (_expirationDate != null)
           'expiry_date':
@@ -130,11 +126,12 @@ class _AddProductViewState extends State<AddProductView> {
               '${_expirationDate!.month.toString().padLeft(2, '0')}-'
               '${_expirationDate!.day.toString().padLeft(2, '0')}',
       };
-      await _ctrl.updateProduct(_editingProduct!.id, payload);
+      final updated = await _ctrl.updateProduct(_editingProduct!.id, payload);
+      productId = updated?.id ?? _editingProduct!.id;
     } else {
       final product = ProductModel(
         id: DateTime.now().millisecondsSinceEpoch.toString(),
-        image: _imageUrlCtrl.text.trim().isNotEmpty ? _imageUrlCtrl.text.trim() : '',
+        image: '',
         name: name,
         description: desc,
         category: _selectedCategory ?? '',
@@ -147,11 +144,19 @@ class _AddProductViewState extends State<AddProductView> {
         storeId: _ctrl.storeId.value.isNotEmpty ? _ctrl.storeId.value : 'store_1',
         expiryDate: _expirationDate,
       );
-      await _ctrl.addProduct(product);
+      final created = await _ctrl.addProduct(product);
+      productId = created?.id;
     }
 
-    setState(() => _isSaving = false);
-    Get.offNamed(Routes.ADMIN);
+    // 2) Con el id ya disponible, subir la imagen (si se eligió una nueva).
+    if (_selectedImage != null && productId != null && productId.isNotEmpty) {
+      await _ctrl.uploadProductImage(_selectedImage!, productId: productId);
+    }
+
+    if (mounted) setState(() => _isSaving = false);
+    // Solo salir si se guardó (si falló la creación, productId es null y se
+    // queda en el formulario con el error ya mostrado).
+    if (productId != null && productId.isNotEmpty) Get.offNamed(Routes.ADMIN);
   }
 
   @override
@@ -286,7 +291,7 @@ class _AddProductViewState extends State<AddProductView> {
           const SizedBox(height: 6),
           _field(
             controller: _nameCtrl,
-            hint: 'e.g. Premium Coffee Voucher',
+            hint: 'e.g. Premium Coffee Redemption Code',
           ),
           const SizedBox(height: 16),
           Row(

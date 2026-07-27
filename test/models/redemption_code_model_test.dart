@@ -1,29 +1,29 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:letdem/app/data/models/voucher_model.dart';
+import 'package:letdem/app/data/models/redemption_code_model.dart';
 
 void main() {
-  group('VoucherModel._parseStatus', () {
+  group('RedemptionCodeModel._parseStatus', () {
     test('mapea todos los estados conocidos (case-insensitive)', () {
-      expect(VoucherModel.fromJson({'status': 'paid'}).status,
-          VoucherStatus.paid);
-      expect(VoucherModel.fromJson({'status': 'REDEEMED'}).status,
-          VoucherStatus.redeemed);
-      expect(VoucherModel.fromJson({'status': 'Expired'}).status,
-          VoucherStatus.expired);
-      expect(VoucherModel.fromJson({'status': 'cancelled'}).status,
-          VoucherStatus.cancelled);
+      expect(RedemptionCodeModel.fromJson({'status': 'paid'}).status,
+          RedemptionCodeStatus.paid);
+      expect(RedemptionCodeModel.fromJson({'status': 'REDEEMED'}).status,
+          RedemptionCodeStatus.redeemed);
+      expect(RedemptionCodeModel.fromJson({'status': 'Expired'}).status,
+          RedemptionCodeStatus.expired);
+      expect(RedemptionCodeModel.fromJson({'status': 'cancelled'}).status,
+          RedemptionCodeStatus.cancelled);
     });
 
     test('estado desconocido o ausente cae en pending', () {
-      expect(VoucherModel.fromJson({'status': 'wat'}).status,
-          VoucherStatus.pending);
-      expect(VoucherModel.fromJson({}).status, VoucherStatus.pending);
+      expect(RedemptionCodeModel.fromJson({'status': 'wat'}).status,
+          RedemptionCodeStatus.pending);
+      expect(RedemptionCodeModel.fromJson({}).status, RedemptionCodeStatus.pending);
     });
   });
 
-  group('VoucherModel objetos anidados', () {
+  group('RedemptionCodeModel objetos anidados', () {
     test('extrae ids de user/store/product como objetos', () {
-      final v = VoucherModel.fromJson({
+      final v = RedemptionCodeModel.fromJson({
         'id': 'v1',
         'user': {'id': 'u1', 'name': 'Juan', 'email': 'j@x.com'},
         'store': {'id': 's1', 'name': 'Tienda'},
@@ -39,7 +39,7 @@ void main() {
     });
 
     test('extrae ids cuando vienen como valor plano', () {
-      final v = VoucherModel.fromJson({
+      final v = RedemptionCodeModel.fromJson({
         'user': 'u9',
         'store': 's9',
         'product': 'p9',
@@ -51,19 +51,19 @@ void main() {
     });
   });
 
-  group('VoucherModel getters', () {
+  group('RedemptionCodeModel getters', () {
     test('isRedeemed refleja el estado', () {
-      expect(VoucherModel.fromJson({'status': 'redeemed'}).isRedeemed, true);
-      expect(VoucherModel.fromJson({'status': 'pending'}).isRedeemed, false);
+      expect(RedemptionCodeModel.fromJson({'status': 'redeemed'}).isRedeemed, true);
+      expect(RedemptionCodeModel.fromJson({'status': 'pending'}).isRedeemed, false);
     });
 
     test('isExpired true si estado es expired', () {
-      final v = VoucherModel.fromJson({'status': 'expired'});
+      final v = RedemptionCodeModel.fromJson({'status': 'expired'});
       expect(v.isExpired, true);
     });
 
     test('isExpired true si expires_at es pasado', () {
-      final v = VoucherModel.fromJson({
+      final v = RedemptionCodeModel.fromJson({
         'expires_at':
             DateTime.now().subtract(const Duration(days: 1)).toIso8601String(),
       });
@@ -71,7 +71,7 @@ void main() {
     });
 
     test('isExpired false para expires_at futuro y estado activo', () {
-      final v = VoucherModel.fromJson({
+      final v = RedemptionCodeModel.fromJson({
         'status': 'paid',
         'expires_at':
             DateTime.now().add(const Duration(days: 5)).toIso8601String(),
@@ -81,16 +81,16 @@ void main() {
 
     test('createdAt es alias de issuedAt', () {
       final iso = '2025-01-01T10:00:00.000';
-      final v = VoucherModel.fromJson({'issued_at': iso});
+      final v = RedemptionCodeModel.fromJson({'issued_at': iso});
       expect(v.createdAt, v.issuedAt);
       expect(v.issuedAt, DateTime.parse(iso));
     });
 
     test('acepta discount_percentage o discount_percent', () {
       expect(
-          VoucherModel.fromJson({'discount_percentage': 15}).discountPercent,
+          RedemptionCodeModel.fromJson({'discount_percentage': 15}).discountPercent,
           15);
-      expect(VoucherModel.fromJson({'discount_percent': 20}).discountPercent,
+      expect(RedemptionCodeModel.fromJson({'discount_percent': 20}).discountPercent,
           20);
     });
   });

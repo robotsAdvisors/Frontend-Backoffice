@@ -1,10 +1,9 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
 import '../../../data/models/admin_user_model.dart';
-import '../../../data/services/auth_service.dart';
-import '../../../routes/app_pages.dart';
 import '../controllers/general_admin_controller.dart';
+import 'backoffice_sidebar.dart';
 
 class KybcView extends GetView<GeneralAdminController> {
   const KybcView({super.key});
@@ -26,7 +25,7 @@ class KybcView extends GetView<GeneralAdminController> {
       backgroundColor: _bg,
       body: Row(
         children: [
-          _sidebar(context),
+          BackofficeSidebar(current: 'kybc'),
           Expanded(child: _body(context)),
         ],
       ),
@@ -34,85 +33,6 @@ class KybcView extends GetView<GeneralAdminController> {
   }
 
   // ─── SIDEBAR ─────────────────────────────────────────────────────────────────
-
-  Widget _sidebar(BuildContext context) {
-    return Container(
-      width: 220,
-      color: Colors.white,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Padding(
-            padding: EdgeInsets.fromLTRB(20, 24, 20, 4),
-            child: Text('Backoffice',
-                style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w800,
-                    color: _dark)),
-          ),
-          Padding(
-            padding: const EdgeInsets.fromLTRB(20, 0, 20, 12),
-            child: Obx(() {
-              final name = controller.currentUserName.value;
-              return Text(name.isNotEmpty ? name : 'Super Admin',
-                  style: const TextStyle(
-                      fontSize: 11, color: Color(0xFF9CA3AF)));
-            }),
-          ),
-          const Divider(height: 1),
-          const SizedBox(height: 8),
-          _navItem(Icons.dashboard_outlined, 'Dashboard',
-              onTap: () => Get.offNamed(Routes.GENERAL_ADMIN)),
-          _navItem(Icons.people_outline, 'Usuarios',
-              onTap: () => Get.toNamed(Routes.COMERCIOS)),
-          _navItem(Icons.verified_user_outlined, 'KYBC', selected: true),
-          _navItem(Icons.flag_outlined, 'Moderación'),
-          _navItem(Icons.payments_outlined, 'Pagos', onTap: () => Get.toNamed(Routes.STRIPE_DISPUTES)),
-          _navItem(Icons.history_outlined, 'Auditoría'),
-
-          const Spacer(),
-          const Divider(height: 1),
-          ListTile(
-            dense: true,
-            leading: const Icon(Icons.logout, size: 18, color: Colors.grey),
-            title: const Text('Logout',
-                style: TextStyle(fontSize: 13, color: Colors.grey)),
-            onTap: () async {
-              await AuthService.signOut();
-              Get.offAllNamed(Routes.LOGIN);
-            },
-          ),
-          const SizedBox(height: 8),
-        ],
-      ),
-    );
-  }
-
-  Widget _navItem(IconData icon, String label,
-      {bool selected = false, VoidCallback? onTap}) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        margin: const EdgeInsets.symmetric(horizontal: 10, vertical: 2),
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-        decoration: BoxDecoration(
-          color: selected ? _purpleLight : Colors.transparent,
-          borderRadius: BorderRadius.circular(10),
-        ),
-        child: Row(children: [
-          Icon(icon, size: 18,
-              color: selected ? _purple : Colors.grey.shade500),
-          const SizedBox(width: 10),
-          Text(label,
-              style: TextStyle(
-                  fontSize: 13,
-                  fontWeight:
-                      selected ? FontWeight.w600 : FontWeight.normal,
-                  color: selected ? _purple : Colors.grey.shade700)),
-        ]),
-      ),
-    );
-  }
 
   // ─── BODY ─────────────────────────────────────────────────────────────────────
 
@@ -1073,7 +993,7 @@ class KybcView extends GetView<GeneralAdminController> {
     if (dt == null) return expiresAt.toString();
     final diff = dt.difference(DateTime.now()).inDays;
     if (diff < 0) return 'Expirado';
-    return 'Vigente (${diff} días más)';
+    return 'Vigente ($diff días más)';
   }
 }
 
@@ -1146,7 +1066,7 @@ class _ComplianceActionsWidgetState
           const SizedBox(height: 14),
           // Action dropdown
           DropdownButtonFormField<String>(
-            value: _selectedAction,
+            initialValue: _selectedAction,
             hint: const Text('Seleccionar motivo de la suspensión...',
                 style: TextStyle(
                     fontSize: 13, color: Color(0xFF9CA3AF))),

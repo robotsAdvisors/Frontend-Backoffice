@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:get/get.dart';
 import 'package:image_picker/image_picker.dart';
 
+import '../../../../utils/app_config.dart';
 import '../../../../utils/dummy_helper.dart';
 import '../../../components/custom_snackbar.dart';
 import '../../../data/models/category_model.dart';
@@ -11,20 +12,20 @@ import '../../../data/models/product_model.dart';
 import '../../../data/models/store_model.dart';
 import '../../../data/models/store_user_model.dart';
 import '../../../data/models/role_definition_model.dart';
-import '../../../data/models/voucher_model.dart';
+import '../../../data/models/redemption_code_model.dart';
 import '../../../data/repositories/marketplace_repository.dart';
 import '../../../data/services/auth_service.dart';
 import '../../../data/services/http/api_client.dart';
 
 class AdminController extends GetxController {
-  static const int _vouchersPageSize = 20;
+  static const int _redemptionCodesPageSize = 20;
 
   final RxList<ProductModel> products = <ProductModel>[].obs;
   final RxList<StoreUserModel> storeUsers = <StoreUserModel>[].obs;
   final RxList<RoleDefinitionModel> roleDefinitions = <RoleDefinitionModel>[].obs;
-  final RxList<VoucherModel> vouchers = <VoucherModel>[].obs;
+  final RxList<RedemptionCodeModel> redemptionCodes = <RedemptionCodeModel>[].obs;
   final RxList<CategoryModel> categories = <CategoryModel>[].obs;
-  final RxSet<String> favoriteVoucherIds = <String>{}.obs;
+  final RxSet<String> favoriteRedemptionCodeIds = <String>{}.obs;
   late StoreModel currentStore;
   final RxInt totalProducts = 0.obs;
   final RxInt totalStock = 0.obs;
@@ -33,16 +34,16 @@ class AdminController extends GetxController {
   final RxInt storeReviewCount = 0.obs;
   final RxString storeId = ''.obs;
   final RxBool isLoading = true.obs;
-  final RxBool isLoadingMoreVouchers = false.obs;
-  final Rx<PageMeta> vouchersMeta = const PageMeta().obs;
-  final RxList<Map<String, dynamic>> dailyVouchers = <Map<String, dynamic>>[].obs;
+  final RxBool isLoadingMoreRedemptionCodes = false.obs;
+  final Rx<PageMeta> redemptionCodesMeta = const PageMeta().obs;
+  final RxList<Map<String, dynamic>> dailyRedemptionCodes = <Map<String, dynamic>>[].obs;
   final Rx<Map<String, dynamic>> analyticsSummary = Rx<Map<String, dynamic>>({});
   final RxList<Map<String, dynamic>> remoteActivity = <Map<String, dynamic>>[].obs;
   final Rx<Map<String, dynamic>> monthlyGoal = Rx<Map<String, dynamic>>({});
 
   // Validación de canjes
-  final Rx<VoucherModel?> previewedVoucher = Rx<VoucherModel?>(null);
-  final RxBool isPreviewingVoucher = false.obs;
+  final Rx<RedemptionCodeModel?> previewedRedemptionCode = Rx<RedemptionCodeModel?>(null);
+  final RxBool isPreviewingRedemptionCode = false.obs;
   final RxString previewError = ''.obs;
   final Rx<Map<String, dynamic>> storePinData = Rx<Map<String, dynamic>>({});
   final RxString regeneratedPin = ''.obs;
@@ -63,13 +64,13 @@ class AdminController extends GetxController {
   final Rx<Map<String, dynamic>> inventoryStats = Rx<Map<String, dynamic>>({});
 
   // Analytics — historial panel
-  final Rx<Map<String, dynamic>> vouchersByStatus =
+  final Rx<Map<String, dynamic>> redemptionCodesByStatus =
       Rx<Map<String, dynamic>>({});
   final RxList<Map<String, dynamic>> topRedeemedProducts =
       <Map<String, dynamic>>[].obs;
 
-  // Date-filtered vouchers for the historial panel
-  final RxList<VoucherModel> dateFilteredVouchers = <VoucherModel>[].obs;
+  // Date-filtered redemptionCodes for the historial panel
+  final RxList<RedemptionCodeModel> dateFilteredRedemptionCodes = <RedemptionCodeModel>[].obs;
   final RxBool isLoadingDateFilter = false.obs;
 
   // Store orders (tab Ventas)
@@ -90,6 +91,13 @@ class AdminController extends GetxController {
 
   // Muestra datos dummy instantáneamente mientras carga el backend.
   void _bootstrapFromDummy() {
+    if (!AppConfig.useDummyData) {
+      // Sin datos demo: arranca con una tienda vacía (sin nombre/PIN/códigos
+      // ficticios) hasta que el backend responda. `currentStore` debe quedar
+      // inicializada para no romper los getters que la usan.
+      currentStore = StoreModel.fromJson(const {});
+      return;
+    }
     final email = AuthService.currentUserEmail ?? '';
     final resolvedId = DummyHelper.storeIdForAdminEmail(email);
     storeId.value = resolvedId ?? DummyHelper.stores.first.id;
@@ -103,8 +111,8 @@ class AdminController extends GetxController {
     storeUsers.assignAll(
       DummyHelper.storeUsers.where((u) => u.storeId == currentStore.id).toList(),
     );
-    vouchers.assignAll(
-      DummyHelper.vouchers.where((v) => v.storeId == currentStore.id).toList(),
+    redemptionCodes.assignAll(
+      DummyHelper.redemptionCodes.where((v) => v.storeId == currentStore.id).toList(),
     );
     _calculateStoreMetrics();
   }
@@ -135,12 +143,12 @@ class AdminController extends GetxController {
       // Si fetchStores falló o devolvió vacío el storeId sigue siendo dummy — no llamar al backend.
       if (storeId.value.isEmpty || storeId.value.startsWith('store_')) return;
 
-      // 2. Cargar productos, vouchers, categorias, analytics, actividad y meta mensual en paralelo.
+      // 2. Cargar productos, redemptionCodes, categorias, analytics, actividad y meta mensual en paralelo.
       final results = await Future.wait<dynamic>([
         _repo.fetchProducts(storeId: storeId.value),
-        _repo.fetchVouchersPage(page: 1, pageSize: _vouchersPageSize),
+        _repo.fetchRedemptionCodesPage(page: 1, pageSize: _redemptionCodesPageSize),
         _repo.fetchCategories().catchError((_) => <CategoryModel>[]),
-        _repo.fetchAnalyticsVouchersDaily(storeId.value)
+        _repo.fetchAnalyticsRedemptionCodesDaily(storeId.value)
             .catchError((_) => <Map<String, dynamic>>[]),
         _repo.fetchAnalyticsSummary(storeId.value)
             .catchError((_) => <String, dynamic>{}),
@@ -156,7 +164,7 @@ class AdminController extends GetxController {
             .catchError((_) => <String, dynamic>{}),
         _repo.fetchInventoryStats(storeId.value)
             .catchError((_) => <String, dynamic>{}),
-        _repo.fetchVouchersByStatus(storeId.value)
+        _repo.fetchRedemptionCodesByStatus(storeId.value)
             .catchError((_) => <String, dynamic>{}),
         _repo.fetchTopRedeemedProducts(storeId.value)
             .catchError((_) => <Map<String, dynamic>>[]),
@@ -165,9 +173,9 @@ class AdminController extends GetxController {
       ]);
 
       final remoteProducts      = results[0]  as List<ProductModel>;
-      final vouchersPage        = results[1]  as Paginated<VoucherModel>;
+      final redemptionCodesPage        = results[1]  as Paginated<RedemptionCodeModel>;
       final remoteCategories    = results[2]  as List<CategoryModel>;
-      final remoteDailyVouchers = results[3]  as List<Map<String, dynamic>>;
+      final remoteDailyRedemptionCodes = results[3]  as List<Map<String, dynamic>>;
       final remoteSummary       = results[4]  as Map<String, dynamic>;
       final remoteActivityList  = results[5]  as List<Map<String, dynamic>>;
       final remoteMonthlyGoal   = results[6]  as Map<String, dynamic>;
@@ -175,20 +183,20 @@ class AdminController extends GetxController {
       final remoteSecurityLog   = results[8]  as List<Map<String, dynamic>>;
       final remoteSettings      = results[9]  as Map<String, dynamic>;
       final remoteInvStats      = results[10] as Map<String, dynamic>;
-      final remoteVoucherStatus = results[11] as Map<String, dynamic>;
+      final remoteRedemptionCodeStatus = results[11] as Map<String, dynamic>;
       final remoteTopRedeemed   = results[12] as List<Map<String, dynamic>>;
       final remoteStoreUsers    = results[13] as List<StoreUserModel>;
 
       products.assignAll(remoteProducts);
 
-      vouchersMeta.value = vouchersPage.meta;
-      // El endpoint /marketplace/vouchers/ ya filtra por tienda autenticada.
-      // No filtrar adicionalmente por storeId para evitar descartar vouchers
+      redemptionCodesMeta.value = redemptionCodesPage.meta;
+      // El endpoint /marketplace/redemptionCodes/ ya filtra por tienda autenticada.
+      // No filtrar adicionalmente por storeId para evitar descartar redemptionCodes
       // cuyo campo store venga en formato distinto (string vs objeto).
-      vouchers.assignAll(vouchersPage.data);
+      redemptionCodes.assignAll(redemptionCodesPage.data);
 
       if (remoteCategories.isNotEmpty) categories.assignAll(remoteCategories);
-      if (remoteDailyVouchers.isNotEmpty) dailyVouchers.assignAll(remoteDailyVouchers);
+      if (remoteDailyRedemptionCodes.isNotEmpty) dailyRedemptionCodes.assignAll(remoteDailyRedemptionCodes);
       if (remoteSummary.isNotEmpty) analyticsSummary.value = remoteSummary;
       if (remoteActivityList.isNotEmpty) remoteActivity.assignAll(remoteActivityList);
       if (remoteMonthlyGoal.isNotEmpty) monthlyGoal.value = remoteMonthlyGoal;
@@ -202,7 +210,7 @@ class AdminController extends GetxController {
         if (days      is int) expiryWarningDays.value = days;
       }
       if (remoteInvStats.isNotEmpty)      inventoryStats.value  = remoteInvStats;
-      if (remoteVoucherStatus.isNotEmpty) vouchersByStatus.value = remoteVoucherStatus;
+      if (remoteRedemptionCodeStatus.isNotEmpty) redemptionCodesByStatus.value = remoteRedemptionCodeStatus;
       if (remoteTopRedeemed.isNotEmpty)   topRedeemedProducts.assignAll(remoteTopRedeemed);
       if (remoteStoreUsers.isNotEmpty)    storeUsers.assignAll(remoteStoreUsers);
 
@@ -214,46 +222,46 @@ class AdminController extends GetxController {
     }
   }
 
-  /// Carga vouchers filtrados por fecha ISO (YYYY-MM-DD) usando el backend.
+  /// Carga redemptionCodes filtrados por fecha ISO (YYYY-MM-DD) usando el backend.
   /// Limpia los resultados si [date] está vacío.
-  Future<void> loadVouchersForDate(String date) async {
+  Future<void> loadRedemptionCodesForDate(String date) async {
     if (date.isEmpty) {
-      dateFilteredVouchers.clear();
+      dateFilteredRedemptionCodes.clear();
       return;
     }
     if (isLoadingDateFilter.value) return;
     isLoadingDateFilter.value = true;
     try {
-      final page = await _repo.fetchVouchersPage(
+      final page = await _repo.fetchRedemptionCodesPage(
         page: 1,
         pageSize: 200,
         date: date,
       );
-      dateFilteredVouchers.assignAll(page.data);
+      dateFilteredRedemptionCodes.assignAll(page.data);
     } catch (_) {
-      dateFilteredVouchers.clear();
+      dateFilteredRedemptionCodes.clear();
     } finally {
       isLoadingDateFilter.value = false;
     }
   }
 
-  Future<void> loadMoreVouchers() async {
-    if (isLoadingMoreVouchers.value || !vouchersMeta.value.hasMore) return;
-    isLoadingMoreVouchers.value = true;
+  Future<void> loadMoreRedemptionCodes() async {
+    if (isLoadingMoreRedemptionCodes.value || !redemptionCodesMeta.value.hasMore) return;
+    isLoadingMoreRedemptionCodes.value = true;
     try {
-      final next = vouchersMeta.value.page + 1;
-      final page = await _repo.fetchVouchersPage(
+      final next = redemptionCodesMeta.value.page + 1;
+      final page = await _repo.fetchRedemptionCodesPage(
         page: next,
-        pageSize: _vouchersPageSize,
+        pageSize: _redemptionCodesPageSize,
       );
-      vouchersMeta.value = page.meta;
-      vouchers.addAll(
+      redemptionCodesMeta.value = page.meta;
+      redemptionCodes.addAll(
         page.data.where((v) => v.storeId.isEmpty || v.storeId == storeId.value),
       );
     } catch (_) {
       // El usuario puede reintentar.
     } finally {
-      isLoadingMoreVouchers.value = false;
+      isLoadingMoreRedemptionCodes.value = false;
     }
   }
 
@@ -333,7 +341,9 @@ class AdminController extends GetxController {
     }
   }
 
-  Future<void> addProduct(ProductModel product) async {
+  /// Crea el producto en el backend y devuelve el modelo creado (con su id),
+  /// para poder subir después la imagen (que exige `product_id`).
+  Future<ProductModel?> addProduct(ProductModel product) async {
     products.add(product);
     _calculateStoreMetrics();
 
@@ -354,22 +364,30 @@ class AdminController extends GetxController {
 
       final created = await _repo.adminCreateProduct(payload);
       if (created != null) {
+        final createdModel = ProductModel.fromJson(created);
         final idx = products.indexOf(product);
         if (idx != -1) {
-          products[idx] = ProductModel.fromJson(created);
+          products[idx] = createdModel;
           _calculateStoreMetrics();
         }
         CustomSnackBar.showCustomSnackBar(
           title: 'Producto creado',
           message: 'El producto se guardó en el backend.',
         );
+        return createdModel;
       }
     } on ApiException catch (e) {
+      products.remove(product); // quita el optimista si falló
+      _calculateStoreMetrics();
       CustomSnackBar.showCustomErrorSnackBar(
         title: 'No se pudo persistir',
         message: e.message,
       );
-    } catch (_) {}
+    } catch (_) {
+      products.remove(product);
+      _calculateStoreMetrics();
+    }
+    return null;
   }
 
   Future<void> deleteProduct(ProductModel product) async {
@@ -395,19 +413,22 @@ class AdminController extends GetxController {
     }
   }
 
-  Future<void> updateProduct(String productId, Map<String, dynamic> payload) async {
+  Future<ProductModel?> updateProduct(
+      String productId, Map<String, dynamic> payload) async {
     try {
       final updated = await _repo.adminUpdateProduct(productId, payload);
       if (updated != null) {
+        final updatedModel = ProductModel.fromJson(updated);
         final idx = products.indexWhere((p) => p.id == productId);
         if (idx != -1) {
-          products[idx] = ProductModel.fromJson(updated);
+          products[idx] = updatedModel;
           _calculateStoreMetrics();
         }
         CustomSnackBar.showCustomSnackBar(
           title: 'Producto actualizado',
           message: 'Los cambios se guardaron correctamente.',
         );
+        return updatedModel;
       }
     } on ApiException catch (e) {
       CustomSnackBar.showCustomErrorSnackBar(
@@ -415,19 +436,24 @@ class AdminController extends GetxController {
         message: e.message,
       );
     } catch (_) {}
+    return null;
   }
 
   // ── Dashboard stats ──────────────────────────────────────────────────────
 
-  // Prefer backend analytics; fall back to local voucher list.
+  // Prefer backend analytics; fall back to local redemptionCode list.
   int get pendingCount {
     final summary = analyticsSummary.value;
-    if (summary['pending_vouchers'] != null) {
-      return (summary['pending_vouchers'] as num).toInt();
+    if (summary['pending_redemption_codes'] != null) {
+      return (summary['pending_redemption_codes'] as num).toInt();
     }
-    return vouchers
+    return redemptionCodes
         .where((v) =>
-            v.status == VoucherStatus.pending || v.status == VoucherStatus.paid)
+            v.status == RedemptionCodeStatus.pending ||
+            v.status == RedemptionCodeStatus.paid ||
+            // Validado pero aún sin entregar: sigue pendiente de acción en el
+            // mostrador (falta confirmar la entrega).
+            v.status == RedemptionCodeStatus.inProgress)
         .length;
   }
 
@@ -438,7 +464,7 @@ class AdminController extends GetxController {
     }
     final now = DateTime.now();
     final dayStart = DateTime(now.year, now.month, now.day);
-    return vouchers.where((v) => v.isRedeemed && v.issuedAt.isAfter(dayStart)).length;
+    return redemptionCodes.where((v) => v.isRedeemed && v.issuedAt.isAfter(dayStart)).length;
   }
 
   int get completedMonthCount {
@@ -447,10 +473,10 @@ class AdminController extends GetxController {
       return (summary['completed_this_month'] as num).toInt();
     }
     final monthStart = DateTime(DateTime.now().year, DateTime.now().month, 1);
-    return vouchers.where((v) => v.isRedeemed && v.issuedAt.isAfter(monthStart)).length;
+    return redemptionCodes.where((v) => v.isRedeemed && v.issuedAt.isAfter(monthStart)).length;
   }
 
-  int get expiredCount => vouchers.where((v) => v.isExpired && !v.isRedeemed).length;
+  int get expiredCount => redemptionCodes.where((v) => v.isExpired && !v.isRedeemed).length;
 
   int get activePrizesCount {
     final summary = analyticsSummary.value;
@@ -482,11 +508,11 @@ class AdminController extends GetxController {
     if (summary['total_points_accumulated'] != null) {
       return (summary['total_points_accumulated'] as num).toInt();
     }
-    return vouchers.fold<int>(0, (sum, v) => sum + v.pointsUsed);
+    return redemptionCodes.fold<int>(0, (sum, v) => sum + v.pointsUsed);
   }
 
-  List<VoucherModel> get recentCanjes {
-    final sorted = [...vouchers]
+  List<RedemptionCodeModel> get recentCanjes {
+    final sorted = [...redemptionCodes]
       ..sort((a, b) => b.issuedAt.compareTo(a.issuedAt));
     return sorted.take(10).toList();
   }
@@ -509,11 +535,11 @@ class AdminController extends GetxController {
 
     String color;
     switch (type) {
-      case 'voucher_redeemed':
+      case 'redemption_code_redeemed':
       case 'redemption':
         color = 'green';
         break;
-      case 'voucher_created':
+      case 'redemption_code_created':
       case 'product_added':
         color = 'orange';
         break;
@@ -548,35 +574,35 @@ class AdminController extends GetxController {
   List<Map<String, dynamic>> _derivedActivityFeed() {
     final items = <Map<String, dynamic>>[];
 
-    final redeemed = redeemedVouchers;
+    final redeemed = redeemedRedemptionCodes;
     if (redeemed.length >= 10) {
       final milestone = (redeemed.length ~/ 10) * 10;
       items.add({
         'title': 'Nueva meta alcanzada',
         'body': 'Tienda superó los $milestone canjes totales.',
-        'time': _relativeTime(redeemedVouchers.last.issuedAt),
+        'time': _relativeTime(redeemedRedemptionCodes.last.issuedAt),
         'color': 'purple',
         'action_label': '',
         'action_route': '',
       });
     }
 
-    if (vouchers.isNotEmpty) {
+    if (redemptionCodes.isNotEmpty) {
       final countByProduct = <String, int>{};
-      for (final v in vouchers) {
+      for (final v in redemptionCodes) {
         countByProduct[v.productId] = (countByProduct[v.productId] ?? 0) + 1;
       }
       final topEntry =
           countByProduct.entries.reduce((a, b) => a.value > b.value ? a : b);
-      final topVoucher = vouchers.firstWhere(
+      final topRedemptionCode = redemptionCodes.firstWhere(
         (v) => v.productId == topEntry.key,
-        orElse: () => vouchers.first,
+        orElse: () => redemptionCodes.first,
       );
-      final name = productNameFor(topVoucher);
+      final name = productNameFor(topRedemptionCode);
       items.add({
         'title': 'Premio destacado',
         'body': "'$name' es el más canjeado esta semana.",
-        'time': _relativeTime(topVoucher.issuedAt),
+        'time': _relativeTime(topRedemptionCode.issuedAt),
         'color': 'orange',
         'action_label': '',
         'action_route': '',
@@ -602,69 +628,69 @@ class AdminController extends GetxController {
 
   // ─────────────────────────────────────────────────────────────────────────
 
-  List<VoucherModel> get recentValidVouchers {
+  List<RedemptionCodeModel> get recentValidRedemptionCodes {
     final cutoff = DateTime.now().subtract(const Duration(days: 90));
-    return vouchers
+    return redemptionCodes
         .where((v) => v.createdAt.isAfter(cutoff) && !v.isRedeemed && !v.isExpired)
         .toList();
   }
 
-  List<VoucherModel> get lastMonthValidVouchers {
+  List<RedemptionCodeModel> get lastMonthValidRedemptionCodes {
     final cutoff = DateTime.now().subtract(const Duration(days: 30));
-    return vouchers
+    return redemptionCodes
         .where((v) => v.createdAt.isAfter(cutoff) && !v.isRedeemed && !v.isExpired)
         .toList();
   }
 
-  List<VoucherModel> get redeemedVouchers =>
-      vouchers.where((v) => v.isRedeemed).toList();
+  List<RedemptionCodeModel> get redeemedRedemptionCodes =>
+      redemptionCodes.where((v) => v.isRedeemed).toList();
 
-  List<VoucherModel> get expiredUnredeemedVouchers =>
-      vouchers.where((v) => v.isExpired && !v.isRedeemed).toList();
+  List<RedemptionCodeModel> get expiredUnredeemedRedemptionCodes =>
+      redemptionCodes.where((v) => v.isExpired && !v.isRedeemed).toList();
 
-  List<VoucherModel> get favoriteVouchers =>
-      vouchers.where((v) => favoriteVoucherIds.contains(v.id)).toList();
+  List<RedemptionCodeModel> get favoriteRedemptionCodes =>
+      redemptionCodes.where((v) => favoriteRedemptionCodeIds.contains(v.id)).toList();
 
-  bool isFavorite(String voucherId) => favoriteVoucherIds.contains(voucherId);
+  bool isFavorite(String redemptionCodeId) => favoriteRedemptionCodeIds.contains(redemptionCodeId);
 
-  void toggleFavorite(String voucherId) {
-    if (favoriteVoucherIds.contains(voucherId)) {
-      favoriteVoucherIds.remove(voucherId);
+  void toggleFavorite(String redemptionCodeId) {
+    if (favoriteRedemptionCodeIds.contains(redemptionCodeId)) {
+      favoriteRedemptionCodeIds.remove(redemptionCodeId);
     } else {
-      favoriteVoucherIds.add(voucherId);
+      favoriteRedemptionCodeIds.add(redemptionCodeId);
     }
   }
 
   // Usa datos embebidos del backend; solo cae a dummy si están vacíos.
-  String customerNameFor(VoucherModel voucher) {
-    final name = voucher.customerName;
+  String customerNameFor(RedemptionCodeModel redemptionCode) {
+    final name = redemptionCode.customerName;
     if (name != null && name.isNotEmpty) return name;
-    final email = voucher.customerEmail;
+    final email = redemptionCode.customerEmail;
     if (email != null && email.isNotEmpty) return email;
-    return DummyHelper.customerNameById(voucher.customerUserId);
+    return DummyHelper.customerNameById(redemptionCode.customerUserId);
   }
 
-  String customerEmailFor(VoucherModel voucher) {
-    final email = voucher.customerEmail;
+  String customerEmailFor(RedemptionCodeModel redemptionCode) {
+    final email = redemptionCode.customerEmail;
     if (email != null && email.isNotEmpty) return email;
-    return DummyHelper.customerEmailById(voucher.customerUserId);
+    return DummyHelper.customerEmailById(redemptionCode.customerUserId);
   }
 
-  String productNameFor(VoucherModel voucher) {
-    if (voucher.productName != null && voucher.productName!.isNotEmpty) {
-      return voucher.productName!;
+  String productNameFor(RedemptionCodeModel redemptionCode) {
+    if (redemptionCode.productName != null && redemptionCode.productName!.isNotEmpty) {
+      return redemptionCode.productName!;
     }
-    return DummyHelper.productNameById(voucher.productId);
+    return DummyHelper.productNameById(redemptionCode.productId);
   }
 
   double get redemptionsGrowthPercent {
     final now = DateTime.now();
     final thisMonthStart = DateTime(now.year, now.month, 1);
     final lastMonthStart = DateTime(now.year, now.month - 1, 1);
-    final thisMonth = vouchers
+    final thisMonth = redemptionCodes
         .where((v) => v.isRedeemed && v.createdAt.isAfter(thisMonthStart))
         .length;
-    final lastMonth = vouchers
+    final lastMonth = redemptionCodes
         .where((v) =>
             v.isRedeemed &&
             v.createdAt.isAfter(lastMonthStart) &&
@@ -675,7 +701,7 @@ class AdminController extends GetxController {
   }
 
   String get storeTier {
-    final count = vouchers.length;
+    final count = redemptionCodes.length;
     if (count >= 200) return 'Gold';
     if (count >= 50) return 'Silver';
     return 'Bronze';
@@ -692,7 +718,7 @@ class AdminController extends GetxController {
       return (g['monthly_goal_current'] as num).toInt();
     }
     final monthStart = DateTime(DateTime.now().year, DateTime.now().month, 1);
-    return vouchers
+    return redemptionCodes
         .where((v) => v.isRedeemed && v.issuedAt.isAfter(monthStart))
         .fold<int>(0, (sum, v) => sum + v.pointsUsed);
   }
@@ -850,9 +876,9 @@ class AdminController extends GetxController {
 
   /// Sube una imagen al backend y devuelve la URL resultante.
   /// POST /marketplace/admin/products/upload-image/
-  Future<String?> uploadProductImage(XFile file) async {
+  Future<String?> uploadProductImage(XFile file, {String? productId}) async {
     try {
-      return await _repo.uploadProductImage(file);
+      return await _repo.uploadProductImage(file, productId: productId);
     } on ApiException catch (e) {
       CustomSnackBar.showCustomErrorSnackBar(
         title: 'Error al subir imagen',
@@ -896,15 +922,15 @@ class AdminController extends GetxController {
     }
   }
 
-  Future<void> previewVoucherCode(String code) async {
+  Future<void> previewRedemptionCodeCode(String code) async {
     if (code.trim().isEmpty) return;
-    isPreviewingVoucher.value = true;
+    isPreviewingRedemptionCode.value = true;
     previewError.value = '';
-    previewedVoucher.value = null;
+    previewedRedemptionCode.value = null;
     try {
-      final voucher = await _repo.previewVoucher(code.trim());
-      if (voucher != null) {
-        previewedVoucher.value = voucher;
+      final redemptionCode = await _repo.previewRedemptionCode(code.trim());
+      if (redemptionCode != null) {
+        previewedRedemptionCode.value = redemptionCode;
       } else {
         previewError.value = 'Código no encontrado.';
       }
@@ -913,39 +939,86 @@ class AdminController extends GetxController {
     } catch (_) {
       previewError.value = 'No se pudo buscar el código.';
     } finally {
-      isPreviewingVoucher.value = false;
+      isPreviewingRedemptionCode.value = false;
     }
   }
 
-  void clearVoucherPreview() {
-    previewedVoucher.value = null;
+  void clearRedemptionCodePreview() {
+    previewedRedemptionCode.value = null;
     previewError.value = '';
   }
 
-  Future<bool> validateVoucherCode(String code) async {
+  /// Paso 1 del mostrador (ST-CJ-02): validar. El código pasa a IN_PROGRESS
+  /// pero NO se consumen puntos todavía; eso es la entrega. Se conserva el
+  /// código a la vista, con su estado ya actualizado, para poder entregarlo.
+  Future<bool> validateRedemptionCodeCode(String code, {String? pin}) async {
     try {
-      final result = await _repo.validateVoucher(code);
+      final result = await _repo.validateRedemptionCode(code, pin: pin);
       if (result != null) {
-        clearVoucherPreview();
+        _applyRedemptionCodeResult(result);
         await _loadFromBackend();
         CustomSnackBar.showCustomSnackBar(
-          title: 'Voucher válido',
-          message: 'El voucher fue canjeado correctamente.',
+          title: 'Código validado',
+          message:
+              'Canje en proceso. Confirma la entrega para completarlo y consumir los puntos.',
         );
         return true;
       }
     } on ApiException catch (e) {
       CustomSnackBar.showCustomErrorSnackBar(
-        title: 'Voucher inválido',
+        title: 'Código de canje inválido',
         message: e.message,
       );
     } catch (_) {
       CustomSnackBar.showCustomErrorSnackBar(
         title: 'Error',
-        message: 'No fue posible validar el voucher.',
+        message: 'No fue posible validar el código de canje.',
       );
     }
     return false;
+  }
+
+  /// Paso 2 del mostrador (ST-CJ-03): entregar. El código pasa a DELIVERED y el
+  /// backend consume los puntos bloqueados. Falla con 400 si no se validó antes.
+  Future<bool> deliverRedemptionCodeCode(String redemptionCodeId) async {
+    try {
+      final result = await _repo.deliverRedemptionCode(redemptionCodeId);
+      if (result != null) {
+        _applyRedemptionCodeResult(result);
+        await _loadFromBackend();
+        CustomSnackBar.showCustomSnackBar(
+          title: 'Entrega confirmada',
+          message: 'El canje se entregó y los puntos se consumieron.',
+        );
+        return true;
+      }
+    } on ApiException catch (e) {
+      CustomSnackBar.showCustomErrorSnackBar(
+        title: 'No se pudo entregar',
+        message: e.message,
+      );
+    } catch (_) {
+      CustomSnackBar.showCustomErrorSnackBar(
+        title: 'Error',
+        message: 'No fue posible confirmar la entrega.',
+      );
+    }
+    return false;
+  }
+
+  /// Refresca el código a la vista con el estado/id de la respuesta del backend,
+  /// conservando los datos ricos del preview (producto, cliente…).
+  void _applyRedemptionCodeResult(Map<String, dynamic> result) {
+    final fresh = RedemptionCodeModel.fromJson(result);
+    final current = previewedRedemptionCode.value;
+    previewedRedemptionCode.value = current == null
+        ? fresh
+        : current.copyWith(
+            id: fresh.id.isNotEmpty ? fresh.id : current.id,
+            status: fresh.status,
+            redeemedAt: fresh.redeemedAt,
+          );
+    previewError.value = '';
   }
 
   // ── Store Orders ─────────────────────────────────────────────────────────
@@ -1008,14 +1081,14 @@ class AdminController extends GetxController {
 
   final RxBool isInitiatingPayment = false.obs;
 
-  /// POST /marketplace/vouchers/{code}/initiate-payment/
+  /// POST /marketplace/redemptionCodes/{code}/initiate-payment/
   /// Devuelve { client_secret, payment_intent_id, amount_eur, status } o lanza ApiException.
-  Future<Map<String, dynamic>?> initiateVoucherPayment(String code,
+  Future<Map<String, dynamic>?> initiateRedemptionCodePayment(String code,
       {String? paymentMethodId}) async {
     if (isInitiatingPayment.value) return null;
     isInitiatingPayment.value = true;
     try {
-      return await _repo.initiateVoucherPayment(code,
+      return await _repo.initiateRedemptionCodePayment(code,
           paymentMethodId: paymentMethodId);
     } on ApiException catch (e) {
       CustomSnackBar.showCustomErrorSnackBar(
@@ -1030,11 +1103,11 @@ class AdminController extends GetxController {
     }
   }
 
-  Future<Map<String, dynamic>?> reportVoucherIncident(String voucherId,
+  Future<Map<String, dynamic>?> reportRedemptionCodeIncident(String redemptionCodeId,
       {required String reason, String notes = ''}) async {
     try {
-      final result = await _repo.reportVoucherIncident(
-          voucherId, reason: reason, notes: notes);
+      final result = await _repo.reportRedemptionCodeIncident(
+          redemptionCodeId, reason: reason, notes: notes);
       final ticketId = result['ticket_id'];
       CustomSnackBar.showCustomSnackBar(
         title: 'Incidencia reportada',

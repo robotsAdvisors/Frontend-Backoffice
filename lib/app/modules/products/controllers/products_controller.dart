@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:get/get.dart';
 
+import '../../../../utils/app_config.dart';
 import '../../../../utils/dummy_helper.dart';
 import '../../../data/models/paginated.dart';
 import '../../../data/models/product_model.dart';
@@ -57,7 +58,8 @@ class ProductsController extends GetxController {
       meta.value = page.meta;
     } catch (e) {
       errorMessage.value = e.toString();
-      if (products.isEmpty) {
+      // En builds reales no se rellena con dummy: se muestra el error/estado vacío.
+      if (AppConfig.useDummyData && products.isEmpty) {
         _usingFallback = true;
         products.assignAll(DummyHelper.products);
         meta.value = PageMeta(

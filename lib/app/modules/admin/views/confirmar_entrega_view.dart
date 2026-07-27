@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 
-import '../../../data/models/voucher_model.dart';
+import '../../../data/models/redemption_code_model.dart';
 import '../../../data/services/auth_service.dart';
 import '../../../routes/app_pages.dart';
 import '../controllers/admin_controller.dart';
@@ -26,6 +26,9 @@ class _ConfirmarEntregaViewState extends State<ConfirmarEntregaView> {
 
   late final AdminController _ctrl;
   final _codeCtrl = TextEditingController();
+  // PIN del mostrador: el backend lo exige al validar solo si la tienda tiene
+  // uno definido. Si se deja vacío, no se envía (tiendas sin PIN).
+  final _pinCtrl = TextEditingController();
   bool _isConfirming = false;
   bool _justConfirmed = false;
 
@@ -38,7 +41,8 @@ class _ConfirmarEntregaViewState extends State<ConfirmarEntregaView> {
   @override
   void dispose() {
     _codeCtrl.dispose();
-    _ctrl.clearVoucherPreview();
+    _pinCtrl.dispose();
+    _ctrl.clearRedemptionCodePreview();
     super.dispose();
   }
 
@@ -101,7 +105,7 @@ class _ConfirmarEntregaViewState extends State<ConfirmarEntregaView> {
         _navItem(icon: Icons.inventory_2_outlined, label: 'Productos',
             onTap: () => Get.toNamed(Routes.INVENTARIO)),
         _navItem(icon: Icons.history_outlined, label: 'Historial',
-            onTap: () => Get.toNamed(Routes.VOUCHER_HISTORY)),
+            onTap: () => Get.toNamed(Routes.REDEMPTION_CODE_HISTORY)),
         _navItem(icon: Icons.security_outlined, label: 'Seguridad',
             onTap: () => Get.toNamed(Routes.SEGURIDAD)),
         _navItem(icon: Icons.settings_outlined, label: 'Configuraciones',
@@ -191,7 +195,7 @@ class _ConfirmarEntregaViewState extends State<ConfirmarEntregaView> {
             style: TextStyle(
                 fontSize: 22, fontWeight: FontWeight.w800, color: _dark)),
         SizedBox(height: 4),
-        Text('Busca el código del voucher para verificar y confirmar la entrega al cliente.',
+        Text('Busca el código de canje para verificar y confirmar la entrega al cliente.',
             style: TextStyle(fontSize: 13, color: Colors.grey)),
       ]),
       const Spacer(),
@@ -237,17 +241,17 @@ class _ConfirmarEntregaViewState extends State<ConfirmarEntregaView> {
             inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'[A-Za-z0-9\-]'))],
             style: const TextStyle(fontSize: 14, color: _dark),
             decoration: const InputDecoration(
-              hintText: 'Ingresa el código del voucher para confirmar...',
+              hintText: 'Ingresa el código de canje para confirmar...',
               hintStyle: TextStyle(fontSize: 13, color: Colors.grey),
               border: InputBorder.none,
               isDense: true,
               contentPadding: EdgeInsets.zero,
             ),
-            onSubmitted: (v) => _ctrl.previewVoucherCode(v.trim()),
+            onSubmitted: (v) => _ctrl.previewRedemptionCodeCode(v.trim()),
           ),
         ),
         const SizedBox(width: 8),
-        Obx(() => _ctrl.isPreviewingVoucher.value
+        Obx(() => _ctrl.isPreviewingRedemptionCode.value
             ? const SizedBox(
                 width: 36, height: 36,
                 child: Center(
@@ -266,7 +270,7 @@ class _ConfirmarEntregaViewState extends State<ConfirmarEntregaView> {
                       borderRadius: BorderRadius.circular(10)),
                 ),
                 onPressed: () =>
-                    _ctrl.previewVoucherCode(_codeCtrl.text.trim()),
+                    _ctrl.previewRedemptionCodeCode(_codeCtrl.text.trim()),
                 child: const Text('Buscar',
                     style: TextStyle(
                         fontSize: 13, fontWeight: FontWeight.w600)),
@@ -302,7 +306,7 @@ class _ConfirmarEntregaViewState extends State<ConfirmarEntregaView> {
 
         // ── Found code badge ────────────────────────────────────────────────
         Obx(() {
-          final v = _ctrl.previewedVoucher.value;
+          final v = _ctrl.previewedRedemptionCode.value;
           final err = _ctrl.previewError.value;
 
           if (err.isNotEmpty) {
@@ -347,7 +351,7 @@ class _ConfirmarEntregaViewState extends State<ConfirmarEntregaView> {
         const SizedBox(height: 10),
 
         // ── Clear button ────────────────────────────────────────────────────
-        Obx(() => _ctrl.previewedVoucher.value != null
+        Obx(() => _ctrl.previewedRedemptionCode.value != null
             ? SizedBox(
                 width: double.infinity,
                 child: TextButton.icon(
@@ -362,7 +366,7 @@ class _ConfirmarEntregaViewState extends State<ConfirmarEntregaView> {
                       style: TextStyle(fontSize: 13)),
                   onPressed: () {
                     _codeCtrl.clear();
-                    _ctrl.clearVoucherPreview();
+                    _ctrl.clearRedemptionCodePreview();
                     setState(() => _justConfirmed = false);
                   },
                 ),
@@ -377,13 +381,13 @@ class _ConfirmarEntregaViewState extends State<ConfirmarEntregaView> {
         _infoPoint(
           icon: Icons.verified_user_outlined,
           color: _purple,
-          text: 'Verifica siempre el estado del voucher antes de confirmar.',
+          text: 'Verifica siempre el estado del código de canje antes de confirmar.',
         ),
         const SizedBox(height: 8),
         _infoPoint(
           icon: Icons.block_outlined,
           color: _red,
-          text: 'No confirmes vouchers expirados o ya canjeados.',
+          text: 'No confirmes códigos de canje expirados o ya canjeados.',
         ),
         const SizedBox(height: 8),
         _infoPoint(
@@ -431,7 +435,7 @@ class _ConfirmarEntregaViewState extends State<ConfirmarEntregaView> {
                 color: _purple,
                 letterSpacing: 1.5)),
         const SizedBox(height: 4),
-        const Text('Voucher encontrado',
+        const Text('Código de canje encontrado',
             style: TextStyle(fontSize: 11, color: _purple)),
       ]),
     );
@@ -477,7 +481,7 @@ class _ConfirmarEntregaViewState extends State<ConfirmarEntregaView> {
 
   Widget _detailCard() {
     return Obx(() {
-      final v = _ctrl.previewedVoucher.value;
+      final v = _ctrl.previewedRedemptionCode.value;
 
       if (v == null) {
         return _emptyDetailCard();
@@ -490,8 +494,12 @@ class _ConfirmarEntregaViewState extends State<ConfirmarEntregaView> {
       final expiresFmt   = v.expiresAt != null
           ? _formatDate(v.expiresAt!.toLocal())
           : '—';
-      final canConfirm   = v.status == VoucherStatus.paid ||
-          v.status == VoucherStatus.pending;
+      // Mostrador en dos pasos (§3): primero validar (→ IN_PROGRESS), luego
+      // entregar (→ DELIVERED, aquí se consumen los puntos). No se puede
+      // entregar sin validar antes.
+      final canValidate = v.status == RedemptionCodeStatus.paid ||
+          v.status == RedemptionCodeStatus.pending;
+      final canDeliver = v.status == RedemptionCodeStatus.inProgress;
 
       return Container(
         padding: const EdgeInsets.all(24),
@@ -598,58 +606,130 @@ class _ConfirmarEntregaViewState extends State<ConfirmarEntregaView> {
 
           const SizedBox(height: 20),
 
-          // ── Status warning if not confirmable ───────────────────────────
-          if (!canConfirm)
+          // ── Aviso si el código no admite ninguna acción ─────────────────
+          if (!canValidate && !canDeliver)
             Container(
               padding: const EdgeInsets.all(12),
               margin: const EdgeInsets.only(bottom: 12),
               decoration: BoxDecoration(
-                color: const Color(0xFFFEF2F2),
+                color: v.isDelivered
+                    ? const Color(0xFFECFDF5)
+                    : const Color(0xFFFEF2F2),
                 borderRadius: BorderRadius.circular(10),
               ),
               child: Row(children: [
-                const Icon(Icons.warning_amber_outlined,
-                    size: 14, color: _red),
+                Icon(
+                    v.isDelivered
+                        ? Icons.check_circle_outline
+                        : Icons.warning_amber_outlined,
+                    size: 14,
+                    color: v.isDelivered ? _green : _red),
                 const SizedBox(width: 8),
                 Expanded(
                   child: Text(
-                    'Este voucher no puede confirmarse (${_statusLabel(v.status)}).',
-                    style: const TextStyle(
-                        fontSize: 12, color: _red, height: 1.4),
+                    v.isDelivered
+                        ? 'Este canje ya fue entregado.'
+                        : 'Este código de canje no admite entrega (${_statusLabel(v.status)}).',
+                    style: TextStyle(
+                        fontSize: 12,
+                        color: v.isDelivered ? _green : _red,
+                        height: 1.4),
                   ),
                 ),
               ]),
             ),
 
-          // ── Confirm button ──────────────────────────────────────────────
-          SizedBox(
-            width: double.infinity,
-            child: ElevatedButton.icon(
-              style: ElevatedButton.styleFrom(
-                backgroundColor: canConfirm ? _purple : Colors.grey.shade200,
-                foregroundColor:
-                    canConfirm ? Colors.white : Colors.grey,
-                padding: const EdgeInsets.symmetric(vertical: 14),
-                shape: RoundedRectangleBorder(
+          // ── Paso 1: validar ─────────────────────────────────────────────
+          if (canValidate) ...[
+            TextField(
+              controller: _pinCtrl,
+              obscureText: true,
+              keyboardType: TextInputType.number,
+              decoration: InputDecoration(
+                labelText: 'PIN de la tienda (si aplica)',
+                helperText:
+                    'Solo si tu tienda tiene PIN. Déjalo vacío si no.',
+                border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12)),
-                elevation: 0,
+                contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 12, vertical: 12),
               ),
-              icon: _isConfirming
-                  ? const SizedBox(
-                      width: 16, height: 16,
-                      child: CircularProgressIndicator(
-                          strokeWidth: 2, color: Colors.white))
-                  : const Icon(Icons.check_circle_outline, size: 18),
-              label: Text(
-                _isConfirming ? 'Confirmando...' : 'Confirmar entrega',
-                style: const TextStyle(
-                    fontSize: 14, fontWeight: FontWeight.w600),
-              ),
-              onPressed: canConfirm && !_isConfirming
-                  ? () => _confirmDelivery(v)
-                  : null,
             ),
-          ),
+            const SizedBox(height: 12),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton.icon(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: _purple,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12)),
+                  elevation: 0,
+                ),
+                icon: _isConfirming
+                    ? const SizedBox(
+                        width: 16, height: 16,
+                        child: CircularProgressIndicator(
+                            strokeWidth: 2, color: Colors.white))
+                    : const Icon(Icons.qr_code_scanner, size: 18),
+                label: Text(
+                  _isConfirming ? 'Validando...' : 'Validar código',
+                  style: const TextStyle(
+                      fontSize: 14, fontWeight: FontWeight.w600),
+                ),
+                onPressed: _isConfirming ? null : () => _validate(v),
+              ),
+            ),
+          ],
+
+          // ── Paso 2: entregar ────────────────────────────────────────────
+          if (canDeliver) ...[
+            Container(
+              padding: const EdgeInsets.all(12),
+              margin: const EdgeInsets.only(bottom: 12),
+              decoration: BoxDecoration(
+                color: const Color(0xFFEFF6FF),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: const Row(children: [
+                Icon(Icons.info_outline, size: 14, color: Color(0xFF2563EB)),
+                SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    'Código validado, canje en proceso. Confirma la entrega solo cuando el cliente reciba el producto: al hacerlo se consumen sus puntos.',
+                    style: TextStyle(
+                        fontSize: 12, color: Color(0xFF2563EB), height: 1.4),
+                  ),
+                ),
+              ]),
+            ),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton.icon(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: _green,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12)),
+                  elevation: 0,
+                ),
+                icon: _isConfirming
+                    ? const SizedBox(
+                        width: 16, height: 16,
+                        child: CircularProgressIndicator(
+                            strokeWidth: 2, color: Colors.white))
+                    : const Icon(Icons.check_circle_outline, size: 18),
+                label: Text(
+                  _isConfirming ? 'Confirmando...' : 'Confirmar entrega',
+                  style: const TextStyle(
+                      fontSize: 14, fontWeight: FontWeight.w600),
+                ),
+                onPressed: _isConfirming ? null : () => _deliver(v),
+              ),
+            ),
+          ],
         ]),
       );
     });
@@ -673,12 +753,12 @@ class _ConfirmarEntregaViewState extends State<ConfirmarEntregaView> {
               const Icon(Icons.local_offer_outlined, size: 26, color: _purple),
         ),
         const SizedBox(height: 14),
-        const Text('Sin voucher seleccionado',
+        const Text('Sin código de canje seleccionado',
             style: TextStyle(
                 fontSize: 14, fontWeight: FontWeight.w600, color: _dark)),
         const SizedBox(height: 6),
         const Text(
-          'Busca o escanea el código del voucher para ver el detalle y confirmar la entrega.',
+          'Busca o escanea el código de canje para ver el detalle y confirmar la entrega.',
           textAlign: TextAlign.center,
           style: TextStyle(fontSize: 12, color: Colors.grey, height: 1.5),
         ),
@@ -734,7 +814,7 @@ class _ConfirmarEntregaViewState extends State<ConfirmarEntregaView> {
                 fontSize: 20, fontWeight: FontWeight.w800, color: _green)),
         const SizedBox(height: 6),
         const Text(
-          'El voucher fue marcado como canjeado correctamente.',
+          'El canje se entregó y los puntos del cliente se consumieron.',
           textAlign: TextAlign.center,
           style: TextStyle(fontSize: 13, color: Colors.grey),
         ),
@@ -755,7 +835,8 @@ class _ConfirmarEntregaViewState extends State<ConfirmarEntregaView> {
                   fontSize: 13, fontWeight: FontWeight.w600)),
           onPressed: () {
             _codeCtrl.clear();
-            _ctrl.clearVoucherPreview();
+            _pinCtrl.clear();
+            _ctrl.clearRedemptionCodePreview();
             setState(() => _justConfirmed = false);
           },
         ),
@@ -800,18 +881,38 @@ class _ConfirmarEntregaViewState extends State<ConfirmarEntregaView> {
   String _formatDate(DateTime dt) =>
       '${dt.day.toString().padLeft(2, '0')}/${dt.month.toString().padLeft(2, '0')}/${dt.year}';
 
-  String _statusLabel(VoucherStatus status) => switch (status) {
-    VoucherStatus.pending   => 'Pendiente',
-    VoucherStatus.paid      => 'Pagado',
-    VoucherStatus.redeemed  => 'Canjeado',
-    VoucherStatus.expired   => 'Expirado',
-    VoucherStatus.cancelled => 'Cancelado',
+  String _statusLabel(RedemptionCodeStatus status) => switch (status) {
+    RedemptionCodeStatus.pending    => 'Pendiente',
+    RedemptionCodeStatus.paid       => 'Pagado',
+    RedemptionCodeStatus.inProgress => 'En proceso',
+    RedemptionCodeStatus.delivered  => 'Entregado',
+    RedemptionCodeStatus.incident   => 'Incidencia',
+    RedemptionCodeStatus.redeemed   => 'Entregado',
+    RedemptionCodeStatus.expired    => 'Expirado',
+    RedemptionCodeStatus.cancelled  => 'Cancelado',
+    RedemptionCodeStatus.rejected   => 'Rechazado',
   };
 
-  Future<void> _confirmDelivery(VoucherModel voucher) async {
+  /// Paso 1: validar el código (→ IN_PROGRESS). No abre el banner de éxito; el
+  /// flujo continúa mostrando el botón de entregar.
+  Future<void> _validate(RedemptionCodeModel redemptionCode) async {
     setState(() => _isConfirming = true);
     try {
-      final ok = await _ctrl.validateVoucherCode(voucher.code);
+      final ok = await _ctrl.validateRedemptionCodeCode(
+        redemptionCode.code,
+        pin: _pinCtrl.text.trim(),
+      );
+      if (ok) _pinCtrl.clear();
+    } finally {
+      if (mounted) setState(() => _isConfirming = false);
+    }
+  }
+
+  /// Paso 2: entregar (→ DELIVERED). Aquí el backend consume los puntos.
+  Future<void> _deliver(RedemptionCodeModel redemptionCode) async {
+    setState(() => _isConfirming = true);
+    try {
+      final ok = await _ctrl.deliverRedemptionCodeCode(redemptionCode.id);
       if (ok && mounted) {
         setState(() => _justConfirmed = true);
       }

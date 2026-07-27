@@ -3,8 +3,8 @@ import '../app/data/models/customer_model.dart';
 import '../app/data/models/product_model.dart';
 import '../app/data/models/store_model.dart';
 import '../app/data/models/store_user_model.dart';
-import '../app/data/models/voucher_campaign_model.dart';
-import '../app/data/models/voucher_model.dart';
+import '../app/data/models/campaign_model.dart';
+import '../app/data/models/redemption_code_model.dart';
 import 'constants.dart';
 
 class DummyHelper {
@@ -330,21 +330,21 @@ class DummyHelper {
     ),
   ];
 
-  static List<VoucherCampaignModel> voucherCampaigns = [
-    VoucherCampaignModel(
+  static List<CampaignModel> redemptionCodeCampaigns = [
+    CampaignModel(
       id: 'campaign_1',
       storeId: 'store_1',
       name: 'Campana bienvenida tienda 1',
-      validFrom: DateTime.now().subtract(const Duration(days: 120)),
-      validUntil: DateTime.now().add(const Duration(days: 120)),
+      startDate: DateTime.now().subtract(const Duration(days: 120)),
+      endDate: DateTime.now().add(const Duration(days: 120)),
       discountPercent: 20,
     ),
-    VoucherCampaignModel(
+    CampaignModel(
       id: 'campaign_2',
       storeId: 'store_2',
       name: 'Campana bienvenida tienda 2',
-      validFrom: DateTime.now().subtract(const Duration(days: 120)),
-      validUntil: DateTime.now().add(const Duration(days: 120)),
+      startDate: DateTime.now().subtract(const Duration(days: 120)),
+      endDate: DateTime.now().add(const Duration(days: 120)),
       discountPercent: 15,
     ),
   ];
@@ -410,9 +410,9 @@ class DummyHelper {
     return product.name;
   }
 
-  static List<VoucherModel> vouchers = [
-    VoucherModel(
-      id: 'voucher_1',
+  static List<RedemptionCodeModel> redemptionCodes = [
+    RedemptionCodeModel(
+      id: 'redemption_code_1',
       campaignId: 'campaign_1',
       storeId: 'store_1',
       customerUserId: 'customer_1',
@@ -422,10 +422,10 @@ class DummyHelper {
       redeemedAt: DateTime.now().subtract(const Duration(days: 38, hours: 4)),
       expiresAt: DateTime.now().subtract(const Duration(days: 30)),
       discountPercent: 20,
-      status: VoucherStatus.redeemed,
+      status: RedemptionCodeStatus.redeemed,
     ),
-    VoucherModel(
-      id: 'voucher_2',
+    RedemptionCodeModel(
+      id: 'redemption_code_2',
       campaignId: 'campaign_1',
       storeId: 'store_1',
       customerUserId: 'customer_2',
@@ -435,10 +435,10 @@ class DummyHelper {
       redeemedAt: null,
       expiresAt: DateTime.now().add(const Duration(days: 7, hours: 12)),
       discountPercent: 15,
-      status: VoucherStatus.pending,
+      status: RedemptionCodeStatus.pending,
     ),
-    VoucherModel(
-      id: 'voucher_3',
+    RedemptionCodeModel(
+      id: 'redemption_code_3',
       campaignId: 'campaign_1',
       storeId: 'store_1',
       customerUserId: 'customer_3',
@@ -448,10 +448,10 @@ class DummyHelper {
       redeemedAt: null,
       expiresAt: DateTime.now().subtract(const Duration(days: 5)),
       discountPercent: 10,
-      status: VoucherStatus.expired,
+      status: RedemptionCodeStatus.expired,
     ),
-    VoucherModel(
-      id: 'voucher_4',
+    RedemptionCodeModel(
+      id: 'redemption_code_4',
       campaignId: 'campaign_2',
       storeId: 'store_2',
       customerUserId: 'customer_4',
@@ -461,10 +461,10 @@ class DummyHelper {
       redeemedAt: DateTime.now().subtract(const Duration(days: 19, hours: 5)),
       expiresAt: DateTime.now().subtract(const Duration(days: 10)),
       discountPercent: 25,
-      status: VoucherStatus.redeemed,
+      status: RedemptionCodeStatus.redeemed,
     ),
-    VoucherModel(
-      id: 'voucher_5',
+    RedemptionCodeModel(
+      id: 'redemption_code_5',
       campaignId: 'campaign_2',
       storeId: 'store_2',
       customerUserId: 'customer_5',
@@ -474,10 +474,10 @@ class DummyHelper {
       redeemedAt: null,
       expiresAt: DateTime.now().add(const Duration(days: 3, hours: 2)),
       discountPercent: 12,
-      status: VoucherStatus.pending,
+      status: RedemptionCodeStatus.pending,
     ),
-    VoucherModel(
-      id: 'voucher_6',
+    RedemptionCodeModel(
+      id: 'redemption_code_6',
       campaignId: 'campaign_1',
       storeId: 'store_1',
       customerUserId: 'customer_demo',
@@ -487,10 +487,10 @@ class DummyHelper {
       redeemedAt: null,
       expiresAt: DateTime.now().add(const Duration(days: 5)),
       discountPercent: 18,
-      status: VoucherStatus.pending,
+      status: RedemptionCodeStatus.pending,
     ),
-    VoucherModel(
-      id: 'voucher_7',
+    RedemptionCodeModel(
+      id: 'redemption_code_7',
       campaignId: 'campaign_1',
       storeId: 'store_1',
       customerUserId: 'customer_demo',
@@ -500,7 +500,7 @@ class DummyHelper {
       redeemedAt: DateTime.now().subtract(const Duration(days: 8, hours: 1)),
       expiresAt: DateTime.now().subtract(const Duration(days: 7)),
       discountPercent: 22,
-      status: VoucherStatus.redeemed,
+      status: RedemptionCodeStatus.redeemed,
     ),
   ];
 

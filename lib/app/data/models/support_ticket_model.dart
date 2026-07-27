@@ -29,7 +29,8 @@ class TicketMessageModel {
       senderRole: senderRole,
       body: (json['body'] ?? json['content'] ?? '').toString(),
       isInternal: json['is_internal'] == true,
-      createdAt: DateTime.tryParse((json['created_at'] ?? '').toString()) ??
+      createdAt: DateTime.tryParse(
+              (json['created_at'] ?? json['created'] ?? '').toString()) ??
           DateTime.now(),
     );
   }
@@ -114,9 +115,11 @@ class SupportTicketModel {
       userEmail: userEmail,
       userExternalId: userExternalId,
       assignedTo: assignedTo,
-      createdAt: DateTime.tryParse((json['created_at'] ?? '').toString()) ??
+      createdAt: DateTime.tryParse(
+              (json['created_at'] ?? json['created'] ?? '').toString()) ??
           DateTime.now(),
-      updatedAt: DateTime.tryParse((json['updated_at'] ?? '').toString()) ??
+      updatedAt: DateTime.tryParse(
+              (json['updated_at'] ?? json['updated'] ?? '').toString()) ??
           DateTime.now(),
       messages: msgs,
     );

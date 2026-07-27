@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
-import '../../../data/models/voucher_model.dart';
+import '../../../data/models/redemption_code_model.dart';
 import '../../../data/services/auth_service.dart';
 import '../../../routes/app_pages.dart';
 import '../controllers/admin_controller.dart';
@@ -114,7 +114,7 @@ class _AdminViewState extends State<AdminView> {
           _navItem(
             icon: Icons.swap_horiz_rounded,
             label: 'Canjes',
-            onTap: () => Get.toNamed(Routes.VOUCHER_HISTORY),
+            onTap: () => Get.toNamed(Routes.REDEMPTION_CODE_HISTORY),
           ),
           _navItem(
             icon: Icons.card_giftcard_outlined,
@@ -148,7 +148,7 @@ class _AdminViewState extends State<AdminView> {
             child: SizedBox(
               width: double.infinity,
               child: ElevatedButton.icon(
-                onPressed: () => _showValidateVoucherDialog(context),
+                onPressed: () => _showValidateRedemptionCodeDialog(context),
                 icon: const Icon(Icons.add, size: 16, color: Colors.white),
                 label: const Text('Nuevo Canje',
                     style: TextStyle(
@@ -306,7 +306,7 @@ class _AdminViewState extends State<AdminView> {
                 ),
                 onSubmitted: (v) {
                   if (v.trim().isNotEmpty) {
-                    Get.toNamed(Routes.VOUCHER_HISTORY);
+                    Get.toNamed(Routes.REDEMPTION_CODE_HISTORY);
                   }
                 },
               ),
@@ -629,7 +629,7 @@ class _AdminViewState extends State<AdminView> {
               ),
               const Spacer(),
               ElevatedButton.icon(
-                onPressed: () => _showValidateVoucherDialog(context),
+                onPressed: () => _showValidateRedemptionCodeDialog(context),
                 icon: const Icon(Icons.qr_code_scanner,
                     size: 16, color: Colors.white),
                 label: const Text('Validar canje',
@@ -691,7 +691,7 @@ class _AdminViewState extends State<AdminView> {
     );
   }
 
-  Widget _canjeRow(VoucherModel v) {
+  Widget _canjeRow(RedemptionCodeModel v) {
     final customerName = _ctrl.customerNameFor(v);
     final initials = customerName
         .split(' ')
@@ -789,21 +789,27 @@ class _AdminViewState extends State<AdminView> {
     );
   }
 
-  String _statusLabel(VoucherModel v) {
+  String _statusLabel(RedemptionCodeModel v) {
     if (v.isRedeemed) return 'COMPLETADO';
+    if (v.isIncident) return 'INCIDENCIA';
     if (v.isExpired) return 'EXPIRADO';
+    if (v.isInProgress) return 'EN PROCESO';
     return 'PENDIENTE';
   }
 
-  Color _statusColor(VoucherModel v) {
+  Color _statusColor(RedemptionCodeModel v) {
     if (v.isRedeemed) return const Color(0xFF166534);
+    if (v.isIncident) return const Color(0xFF991B1B);
     if (v.isExpired) return const Color(0xFF991B1B);
+    if (v.isInProgress) return const Color(0xFF1D4ED8);
     return const Color(0xFF92400E);
   }
 
-  Color _statusBg(VoucherModel v) {
+  Color _statusBg(RedemptionCodeModel v) {
     if (v.isRedeemed) return const Color(0xFFDCFCE7);
+    if (v.isIncident) return const Color(0xFFFEE2E2);
     if (v.isExpired) return const Color(0xFFFEE2E2);
+    if (v.isInProgress) return const Color(0xFFDBEAFE);
     return const Color(0xFFFEF3C7);
   }
 
@@ -852,7 +858,7 @@ class _AdminViewState extends State<AdminView> {
           }),
           const SizedBox(height: 4),
           GestureDetector(
-            onTap: () => Get.toNamed(Routes.VOUCHER_HISTORY),
+            onTap: () => Get.toNamed(Routes.REDEMPTION_CODE_HISTORY),
             child: const Center(
               child: Text(
                 'Ver todo el historial',
@@ -944,7 +950,7 @@ class _AdminViewState extends State<AdminView> {
 
   // ─── DIALOGS ──────────────────────────────────────────────────────────────────
 
-  void _showValidateVoucherDialog(BuildContext context) {
+  void _showValidateRedemptionCodeDialog(BuildContext context) {
     final codeCtrl = TextEditingController();
     showDialog<void>(
       context: context,
@@ -955,7 +961,7 @@ class _AdminViewState extends State<AdminView> {
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Text('Ingresa el código del voucher:'),
+            const Text('Ingresa el código de canje:'),
             const SizedBox(height: 12),
             TextField(
               controller: codeCtrl,
@@ -983,7 +989,7 @@ class _AdminViewState extends State<AdminView> {
               final code = codeCtrl.text.trim();
               if (code.isEmpty) return;
               Navigator.of(ctx).pop();
-              await _ctrl.validateVoucherCode(code);
+              await _ctrl.validateRedemptionCodeCode(code);
             },
             child: const Text('Validar'),
           ),

@@ -1,18 +1,16 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:image_picker/image_picker.dart';
 
 import '../../../data/models/store_model.dart';
 import '../../../data/models/store_user_model.dart';
-import '../../../data/services/auth_service.dart';
-import '../../../routes/app_pages.dart';
 import '../controllers/general_admin_controller.dart';
+import 'backoffice_sidebar.dart';
 
 class StoreConfigView extends GetView<GeneralAdminController> {
   const StoreConfigView({super.key});
 
   static const Color _purple = Color(0xFF7C3AED);
-  static const Color _purpleLight = Color(0xFFEDE9FE);
   static const Color _bg = Color(0xFFF8F7FF);
 
   @override
@@ -32,7 +30,7 @@ class StoreConfigView extends GetView<GeneralAdminController> {
       backgroundColor: _bg,
       body: Row(
         children: [
-          _sidebar(context),
+          BackofficeSidebar(current: 'tiendas'),
           Expanded(
             child: Obx(() {
               if (controller.isLoadingStore.value) {
@@ -52,89 +50,6 @@ class StoreConfigView extends GetView<GeneralAdminController> {
 
   // ─── SIDEBAR ─────────────────────────────────────────────────────────────────
 
-  Widget _sidebar(BuildContext context) {
-    return Container(
-      width: 220,
-      color: Colors.white,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Padding(
-            padding: EdgeInsets.fromLTRB(20, 24, 20, 12),
-            child: Text('Backoffice',
-                style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w800,
-                    color: Color(0xFF1E1B4B))),
-          ),
-          const Divider(height: 1),
-          const SizedBox(height: 8),
-          _navItem(
-            icon: Icons.dashboard_outlined,
-            label: 'Dashboard',
-            onTap: () => Get.offNamed(Routes.GENERAL_ADMIN),
-          ),
-          _navItem(icon: Icons.people_outline, label: 'Usuarios',
-              onTap: () => Get.toNamed(Routes.COMERCIOS)),
-          _navItem(icon: Icons.privacy_tip_outlined, label: 'GDPR',
-              onTap: () => Get.toNamed(Routes.LEGAL_CONSENTS)),
-          _navItem(icon: Icons.gavel_outlined, label: 'Legal'),
-          _navItem(icon: Icons.store_outlined, label: 'Tiendas', selected: true),
-          _navItem(icon: Icons.flag_outlined, label: 'Moderación'),
-          _navItem(icon: Icons.payments_outlined, label: 'Pagos', onTap: () => Get.toNamed(Routes.STRIPE_DISPUTES)),
-          _navItem(icon: Icons.confirmation_number_outlined, label: 'Soporte',
-              onTap: () => Get.toNamed(Routes.SUPPORT_TICKETS)),
-
-          const Spacer(),
-          const Divider(height: 1),
-          ListTile(
-            dense: true,
-            leading: const Icon(Icons.logout, size: 18, color: Colors.grey),
-            title: const Text('Logout',
-                style: TextStyle(fontSize: 13, color: Colors.grey)),
-            onTap: () async {
-              await AuthService.signOut();
-              Get.offAllNamed(Routes.LOGIN);
-            },
-          ),
-          const SizedBox(height: 8),
-        ],
-      ),
-    );
-  }
-
-  Widget _navItem({
-    required IconData icon,
-    required String label,
-    bool selected = false,
-    VoidCallback? onTap,
-  }) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        margin: const EdgeInsets.symmetric(horizontal: 10, vertical: 2),
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-        decoration: BoxDecoration(
-          color: selected ? _purpleLight : Colors.transparent,
-          borderRadius: BorderRadius.circular(10),
-        ),
-        child: Row(
-          children: [
-            Icon(icon, size: 18,
-                color: selected ? _purple : Colors.grey.shade500),
-            const SizedBox(width: 10),
-            Text(label,
-                style: TextStyle(
-                  fontSize: 13,
-                  fontWeight:
-                      selected ? FontWeight.w600 : FontWeight.normal,
-                  color: selected ? _purple : Colors.grey.shade700,
-                )),
-          ],
-        ),
-      ),
-    );
-  }
 }
 
 // ─── FORM BODY ───────────────────────────────────────────────────────────────
@@ -360,17 +275,16 @@ class _StoreFormBodyState extends State<_StoreFormBody> {
         child: Container(
           width: 320,
           height: 140,
+          clipBehavior: Clip.antiAlias,
           decoration: BoxDecoration(
             color: const Color(0xFFF3F4F6),
             borderRadius: BorderRadius.circular(12),
-            image: bannerUrl.isNotEmpty
-                ? DecorationImage(
-                    image: NetworkImage(bannerUrl),
-                    fit: BoxFit.cover)
-                : null,
           ),
-          child: bannerUrl.isEmpty
-              ? Column(
+          child: Stack(
+            fit: StackFit.expand,
+            children: [
+              if (bannerUrl.isEmpty)
+                Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     Icon(Icons.add_photo_alternate_outlined,
@@ -381,7 +295,35 @@ class _StoreFormBodyState extends State<_StoreFormBody> {
                             fontSize: 12, color: Colors.grey.shade500)),
                   ],
                 )
-              : Align(
+              else
+                Image.network(
+                  bannerUrl,
+                  fit: BoxFit.cover,
+                  // Diagnóstico: si la imagen no carga, muestra la URL real que
+                  // se intentó cargar para saber por qué (relativa, 404, auth…).
+                  errorBuilder: (_, err, __) => Padding(
+                    padding: const EdgeInsets.all(8),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const Icon(Icons.broken_image_outlined,
+                            color: Colors.grey),
+                        const SizedBox(height: 4),
+                        const Text('No se pudo cargar la imagen',
+                            style: TextStyle(fontSize: 10, color: Colors.grey)),
+                        const SizedBox(height: 4),
+                        Text(bannerUrl,
+                            maxLines: 3,
+                            overflow: TextOverflow.ellipsis,
+                            textAlign: TextAlign.center,
+                            style: const TextStyle(
+                                fontSize: 9, color: Colors.redAccent)),
+                      ],
+                    ),
+                  ),
+                ),
+              if (bannerUrl.isNotEmpty)
+                Align(
                   alignment: Alignment.bottomRight,
                   child: Padding(
                     padding: const EdgeInsets.all(8),
@@ -393,11 +335,12 @@ class _StoreFormBodyState extends State<_StoreFormBody> {
                         borderRadius: BorderRadius.circular(6),
                       ),
                       child: const Text('Cambiar',
-                          style: TextStyle(
-                              color: Colors.white, fontSize: 11)),
+                          style: TextStyle(color: Colors.white, fontSize: 11)),
                     ),
                   ),
                 ),
+            ],
+          ),
         ),
       );
     });
@@ -659,7 +602,7 @@ class _StoreFormBodyState extends State<_StoreFormBody> {
               },
               children: [
                 _tableHeader(),
-                ...users.map(_tableRow).toList(),
+                ...users.map(_tableRow),
               ],
             );
           }),
@@ -910,7 +853,7 @@ class _StoreFormBodyState extends State<_StoreFormBody> {
                         widget.storeId, enabled: val);
                   }
                 },
-                activeColor: _purple,
+                activeThumbColor: _purple,
               ),
             ],
           ),
@@ -1089,27 +1032,30 @@ class _StoreFormBodyState extends State<_StoreFormBody> {
   }
 
   Future<void> _pickBanner() async {
-    if (widget.storeId.isEmpty) return;
+    if (widget.storeId.isEmpty) {
+      Get.snackbar('Selecciona una tienda',
+          'Abre una tienda desde Comercios para subir su banner',
+          snackPosition: SnackPosition.BOTTOM);
+      return;
+    }
     final picker = ImagePicker();
     final file = await picker.pickImage(source: ImageSource.gallery);
     if (file == null) return;
-    final url = await widget.controller.uploadSelectedStoreBanner(
-        widget.storeId, file);
-    if (url != null) {
-      await widget.controller.loadStoreDetail(widget.storeId);
-    }
+    // El controlador sube, recarga la ficha y refleja el banner.
+    await widget.controller.uploadSelectedStoreBanner(widget.storeId, file);
   }
 
   Future<void> _pickLogo() async {
-    if (widget.storeId.isEmpty) return;
+    if (widget.storeId.isEmpty) {
+      Get.snackbar('Selecciona una tienda',
+          'Abre una tienda desde Comercios para subir su logo',
+          snackPosition: SnackPosition.BOTTOM);
+      return;
+    }
     final picker = ImagePicker();
     final file = await picker.pickImage(source: ImageSource.gallery);
     if (file == null) return;
-    final url = await widget.controller.uploadSelectedStoreLogo(
-        widget.storeId, file);
-    if (url != null) {
-      await widget.controller.loadStoreDetail(widget.storeId);
-    }
+    await widget.controller.uploadSelectedStoreLogo(widget.storeId, file);
   }
 
   void _confirmRegeneratePin() {
@@ -1186,7 +1132,7 @@ class _StoreFormBodyState extends State<_StoreFormBody> {
                       fontSize: 13, fontWeight: FontWeight.w600)),
               const SizedBox(height: 6),
               DropdownButtonFormField<String>(
-                value: selectedRole,
+                initialValue: selectedRole,
                 decoration: InputDecoration(
                   contentPadding: const EdgeInsets.symmetric(
                       horizontal: 12, vertical: 10),
@@ -1287,7 +1233,7 @@ class _StoreFormBodyState extends State<_StoreFormBody> {
               style: const TextStyle(fontWeight: FontWeight.w700,
                   fontSize: 15)),
           content: DropdownButtonFormField<String>(
-            value: newRole,
+            initialValue: newRole,
             decoration: InputDecoration(
               contentPadding: const EdgeInsets.symmetric(
                   horizontal: 12, vertical: 10),

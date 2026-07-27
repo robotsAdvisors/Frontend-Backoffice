@@ -34,7 +34,7 @@ import '../modules/admin/views/add_product_view.dart';
 import '../modules/admin/views/analytics_view.dart';
 import '../modules/admin/views/admin_view.dart';
 import '../modules/admin/views/reviews_view.dart';
-import '../modules/admin/views/voucher_history_view.dart';
+import '../modules/admin/views/redemption_code_history_view.dart';
 import '../modules/admin/views/admin_settings_view.dart';
 import '../modules/admin/views/inventario_view.dart';
 import '../modules/admin/views/premios_view.dart';
@@ -55,19 +55,31 @@ import '../modules/admin/views/seguridad_view.dart';
 import '../modules/admin/views/incidencias_view.dart';
 import '../modules/admin/views/confirmar_entrega_view.dart';
 import '../modules/general_admin/views/comercios_view.dart';
+import '../modules/general_admin/views/campaigns_view.dart';
+import '../modules/antifraude/antifraude_screen.dart';
+import '../modules/antifraude/antifraude_detail.dart';
+import '../modules/antifraude/antifraude_settings.dart';
+import '../modules/antifraude/bindings/antifraude_binding.dart';
 import '../modules/withdrawals/bindings/withdrawals_binding.dart';
 import '../modules/withdrawals/views/withdrawals_view.dart';
 import '../modules/virtual_card/bindings/virtual_card_binding.dart';
 import '../modules/virtual_card/views/virtual_card_view.dart';
 
-// 🔎 Nuevo módulo antifraude
-import '../modules/antifraude/antifraude_screen.dart';
-import '../modules/antifraude/antifraude_detail.dart';
-import '../modules/antifraude/antifraude_settings.dart';
-import '../modules/antifraude/antifraude_actions.dart';
+// Import de la nueva vista
+import '../modules/general_admin/views/publicaciones_page.dart';
+import '../modules/general_admin/views/publicacion_detail_page.dart';
 
-// 🔎 Nuevo módulo campañas
-import '../modules/general_admin/views/campanias_view.dart';
+// Wallet de puntos
+import '../modules/general_admin/views/wallet_points_view.dart';
+import '../modules/general_admin/bindings/wallet_points_binding.dart';
+
+// Historial de movimientos
+import '../modules/general_admin/views/movimientos_view.dart';
+import '../modules/general_admin/bindings/movimientos_binding.dart';
+
+// Configuración del programa de puntos
+import '../modules/general_admin/views/configuracion_puntos_view.dart';
+import '../modules/general_admin/bindings/configuracion_puntos_binding.dart';
 
 part 'app_routes.dart';
 
@@ -83,7 +95,7 @@ class AppPages {
     GetPage(name: _Paths.ADMIN, page: () => const AdminView(), binding: AdminBinding()),
     GetPage(name: _Paths.REVIEWS, page: () => const ReviewsView(), binding: AdminBinding(),
       transition: Transition.rightToLeft, transitionDuration: const Duration(milliseconds: 250)),
-    GetPage(name: _Paths.VOUCHER_HISTORY, page: () => const VoucherHistoryView(), binding: AdminBinding()),
+    GetPage(name: _Paths.REDEMPTION_CODE_HISTORY, page: () => const RedemptionCodeHistoryView(), binding: AdminBinding()),
     GetPage(name: _Paths.ADD_PRODUCT, page: () => const AddProductView(), binding: AdminBinding(),
       transition: Transition.rightToLeft, transitionDuration: const Duration(milliseconds: 250)),
     GetPage(name: _Paths.ANALYTICS, page: () => const AnalyticsView(), binding: AdminBinding(),
@@ -121,86 +133,73 @@ class AppPages {
       transition: Transition.rightToLeft, transitionDuration: const Duration(milliseconds: 250)),
     GetPage(name: _Paths.COMERCIOS, page: () => const ComerciosView(), binding: GeneralAdminBinding(),
       transition: Transition.rightToLeft, transitionDuration: const Duration(milliseconds: 250)),
-    GetPage(name: _Paths.BASE, page: () => const BaseView(), binding: BaseBinding()),
-    GetPage(name: _Paths.HOME, page: () => const HomeView(), binding: HomeBinding()),
-    GetPage(name: _Paths.CART, page: () => const CartView(), binding: CartBinding()),
-    GetPage(name: _Paths.PRODUCT_DETAILS, page: () => const ProductDetailsView(), binding: ProductDetailsBinding(),
+    GetPage(name: _Paths.CAMPAIGNS, page: () => const CampaignsView(), binding: GeneralAdminBinding(),
       transition: Transition.rightToLeft, transitionDuration: const Duration(milliseconds: 250)),
-    GetPage(name: _Paths.CATEGORY, page: () => const CategoryView(), binding: CategoryBinding()),
-    GetPage(name: _Paths.CALENDAR, page: () => const CalendarView(), binding: CalendarBinding()),
-    GetPage(name: _Paths.PROFILE, page: () => const ProfileView(), binding: ProfileBinding()),
-    GetPage(
-      name: _Paths.PRODUCTS,
-      page: () => const ProductsView(),
-      binding: ProductsBinding(),
-    ),
-    GetPage(
-      name: _Paths.CUSTOMER_HISTORY,
-      page: () => const CustomerHistoryView(),
-      binding: CustomerHistoryBinding(),
-    ),
-    GetPage(
-      name: _Paths.STORES,
-      page: () => const StoresView(),
-      binding: StoresBinding(),
-    ),
-    GetPage(
-      name: _Paths.PREFERENCES,
-      page: () => const PreferencesView(),
-      transition: Transition.rightToLeft,
-      transitionDuration: const Duration(milliseconds: 250),
-    ),
-    GetPage(
-      name: _Paths.CHANGE_PASSWORD,
-      page: () => const ChangePasswordView(),
-      transition: Transition.rightToLeft,
-      transitionDuration: const Duration(milliseconds: 250),
-    ),
-    GetPage(
-      name: _Paths.FORGOT_PASSWORD,
-      page: () => const ForgotPasswordView(),
-      transition: Transition.rightToLeft,
-      transitionDuration: const Duration(milliseconds: 250),
-    ),
-    GetPage(
-      name: _Paths.WITHDRAWALS,
-      page: () => const WithdrawalsView(),
-      binding: WithdrawalsBinding(),
-      transition: Transition.rightToLeft,
-      transitionDuration: const Duration(milliseconds: 250),
-    ),
-    GetPage(
-      name: _Paths.VIRTUAL_CARD,
-      page: () => const VirtualCardView(),
-      binding: VirtualCardBinding(),
-      transition: Transition.rightToLeft,
-      transitionDuration: const Duration(milliseconds: 250),
-    ),
 
-    // 🔎 Bloque Antifraude
+       // Antifraude
     GetPage(
       name: _Paths.ANTIFRAUDE,
       page: () => const AntifraudeScreen(),
+      binding: AntifraudeBinding(),
+      transition: Transition.rightToLeft,
+      transitionDuration: const Duration(milliseconds: 250),
     ),
     GetPage(
       name: _Paths.ANTIFRAUDE_DETAIL,
       page: () => const AntifraudeDetail(),
+      binding: AntifraudeBinding(),
+      transition: Transition.rightToLeft,
+      transitionDuration: const Duration(milliseconds: 250),
     ),
     GetPage(
       name: _Paths.ANTIFRAUDE_SETTINGS,
       page: () => const AntifraudeSettings(),
-    ),
-    GetPage(
-      name: _Paths.ANTIFRAUDE_ACTIONS,
-      page: () => const AntifraudeActions(),
+      binding: AntifraudeBinding(),
+      transition: Transition.rightToLeft,
+      transitionDuration: const Duration(milliseconds: 250),
     ),
 
-   GetPage(
-     name: _Paths.CAMPANIAS,
-     page: () => CampaniasView(),
-     transition: Transition.rightToLeft,
-     transitionDuration: const Duration(milliseconds: 250),
-     
+    // Nueva ruta: Publicaciones de aparcamiento
+    GetPage(
+      name: _Paths.PUBLICACIONES,
+      page: () => const PublicacionesPage(),
+      binding: GeneralAdminBinding(),
+      transition: Transition.rightToLeft,
+      transitionDuration: const Duration(milliseconds: 250),
+    ),
+    GetPage(
+      name: _Paths.PUBLICACION_DETAIL,
+      page: () => const PublicacionDetailPage(id: 'demo'),
+      binding: GeneralAdminBinding(),
+      transition: Transition.rightToLeft,
+      transitionDuration: const Duration(milliseconds: 250),
+    ),
+
+    // Nueva ruta: Wallet de puntos
+    GetPage(
+      name: _Paths.WALLET_POINTS,
+      page: () => const WalletPointsView(),
+      binding: WalletPointsBinding(),
+      transition: Transition.rightToLeft,
+      transitionDuration: const Duration(milliseconds: 250),
+    ),
+
+    // Nueva ruta: Historial de movimientos
+    GetPage(
+      name: _Paths.MOVIMIENTOS,
+      page: () => const MovimientosView(),
+      binding: MovimientosBinding(),
+      transition: Transition.rightToLeft,
+      transitionDuration: const Duration(milliseconds: 250),
+    ),
+
+    // Nueva ruta: Configuración del programa de puntos
+    GetPage(
+      name: _Paths.CONFIGURACION_PUNTOS,
+      page: () => const ConfiguracionPuntosView(),
+      binding: ConfiguracionPuntosBinding(),
+      transition: Transition.rightToLeft,
+      transitionDuration: const Duration(milliseconds: 250),
     ),
   ];
 }

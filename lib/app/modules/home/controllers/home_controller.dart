@@ -5,6 +5,7 @@ import 'package:get/get.dart';
 
 import '../../../../config/theme/my_theme.dart';
 import '../../../../utils/constants.dart';
+import '../../../../utils/app_config.dart';
 import '../../../../utils/dummy_helper.dart';
 import '../../../data/local/my_shared_pref.dart';
 import '../../base/controllers/base_controller.dart';
@@ -70,13 +71,21 @@ class HomeController extends GetxController {
       ]);
       final remoteCategories = results[0] as List<CategoryModel>;
       final remoteProducts = results[1] as List<ProductModel>;
-      categories.assignAll(remoteCategories.isNotEmpty ? remoteCategories : DummyHelper.categories);
-      products.assignAll(remoteProducts.isNotEmpty ? remoteProducts : DummyHelper.products);
+      // Con datos demo desactivados se respeta lo que devuelva el backend,
+      // aunque venga vacío; solo se rellena con dummy en builds de demo.
+      categories.assignAll(remoteCategories.isEmpty && AppConfig.useDummyData
+          ? DummyHelper.categories
+          : remoteCategories);
+      products.assignAll(remoteProducts.isEmpty && AppConfig.useDummyData
+          ? DummyHelper.products
+          : remoteProducts);
     } catch (e) {
       errorMessage.value = e.toString();
-      // Fallback a datos locales para que la UI no quede en blanco.
-      categories.assignAll(DummyHelper.categories);
-      products.assignAll(DummyHelper.products);
+      // Fallback a datos locales solo en builds de demo; en real, UI vacía + error.
+      if (AppConfig.useDummyData) {
+        categories.assignAll(DummyHelper.categories);
+        products.assignAll(DummyHelper.products);
+      }
     } finally {
       isLoading.value = false;
     }

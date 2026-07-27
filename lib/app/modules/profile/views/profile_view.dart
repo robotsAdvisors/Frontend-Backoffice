@@ -562,7 +562,7 @@ class ProfileView extends GetView<ProfileController> {
 
   Widget _redemptionHistoryCard(ThemeData theme) {
     final rows = [
-      ['2024-01-15', 'Coffee Voucher', 'Café Armonía', '-150 pts'],
+      ['2024-01-15', 'Coffee RedemptionCode', 'Café Armonía', '-150 pts'],
       ['2024-01-10', 'Discount 20%', 'Tienda Moda', '-300 pts'],
       ['2024-01-05', 'Free Delivery', 'Supermercado X', '-100 pts'],
     ];

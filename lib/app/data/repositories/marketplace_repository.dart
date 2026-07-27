@@ -4,6 +4,7 @@ import 'package:image_picker/image_picker.dart';
 import '../../../utils/api_config.dart';
 import '../models/admin_user_model.dart';
 import '../models/audit_log_model.dart';
+import '../models/campaign_model.dart';
 import '../models/category_model.dart';
 import '../models/data_subject_request_model.dart';
 import '../models/gdpr_request_model.dart';
@@ -20,7 +21,7 @@ import '../models/paginated.dart';
 import '../models/product_model.dart';
 import '../models/store_model.dart';
 import '../models/store_user_model.dart';
-import '../models/voucher_model.dart';
+import '../models/redemption_code_model.dart';
 import '../services/http/api_client.dart';
 
 /// Repositorio del modulo marketplace contra el backend Django Letdem.
@@ -168,15 +169,36 @@ class MarketplaceRepository {
     return null;
   }
 
-  // ---------- VOUCHERS ----------
+  /// Lista de tiendas para el BACKOFFICE GENERAL: todas las creadas, publicadas
+  /// o no. Usa el endpoint admin, a diferencia de [fetchStores] (catálogo público
+  /// que solo expone las publicadas).
+  /// GET /marketplace/admin/stores/
+  Future<List<StoreModel>> fetchAdminStores({String? search}) async {
+    try {
+      final response = await _dio.get(
+        ApiConfig.adminStores,
+        queryParameters: {
+          if (search != null && search.isNotEmpty) 'search': search,
+        },
+      );
+      return _toList(response.data)
+          .whereType<Map>()
+          .map((e) => StoreModel.fromJson(Map<String, dynamic>.from(e)))
+          .toList();
+    } catch (e) {
+      throw toApiException(e);
+    }
+  }
 
-  Future<List<VoucherModel>> fetchVouchers({
+  // ---------- REDEMPTION_CODES ----------
+
+  Future<List<RedemptionCodeModel>> fetchRedemptionCodes({
     String? status,
     String? redeemType,
   }) async {
     try {
       final response = await _dio.get(
-        ApiConfig.vouchers,
+        ApiConfig.redemptionCodes,
         queryParameters: {
           if (status != null && status.isNotEmpty) 'status': status,
           if (redeemType != null && redeemType.isNotEmpty)
@@ -184,15 +206,17 @@ class MarketplaceRepository {
         },
       );
       return _toList(response.data)
-          .map((e) => VoucherModel.fromJson(Map<String, dynamic>.from(e as Map)))
+          .map((e) => RedemptionCodeModel.fromJson(Map<String, dynamic>.from(e as Map)))
           .toList();
     } catch (e) {
       throw toApiException(e);
     }
   }
 
-  /// Versión paginada de [fetchVouchers] que expone el `meta`.
-  Future<Paginated<VoucherModel>> fetchVouchersPage({
+  /// Versión paginada para el BACKOFFICE DE TIENDA: los canjes del comercio.
+  /// Usa la ruta scopeada a tienda (`stores/redemption-codes/`), no la genérica
+  /// del usuario, que devolvería los canjes donde la tienda es cliente.
+  Future<Paginated<RedemptionCodeModel>> fetchRedemptionCodesPage({
     String? status,
     String? redeemType,
     int? page,
@@ -201,7 +225,7 @@ class MarketplaceRepository {
     String? date,
   }) async {
     return _fetchPage(
-      url: ApiConfig.vouchers,
+      url: ApiConfig.storeRedemptionCodes,
       page: page,
       pageSize: pageSize,
       query: {
@@ -209,17 +233,17 @@ class MarketplaceRepository {
         if (redeemType != null && redeemType.isNotEmpty) 'redeem_type': redeemType,
         if (date != null && date.isNotEmpty) 'date': date,
       },
-      fromJson: VoucherModel.fromJson,
+      fromJson: RedemptionCodeModel.fromJson,
     );
   }
 
-  Future<VoucherModel?> createVoucherOnline({
+  Future<RedemptionCodeModel?> createRedemptionCodeOnline({
     required String storeId,
     required String productId,
   }) async {
     try {
       final response = await _dio.post(
-        ApiConfig.vouchersCreateOnline,
+        ApiConfig.redemptionCodesCreateOnline,
         data: {
           'store_id': storeId,
           'product_id': productId,
@@ -227,7 +251,7 @@ class MarketplaceRepository {
       );
       if ((response.statusCode == 200 || response.statusCode == 201) &&
           response.data is Map) {
-        return VoucherModel.fromJson(
+        return RedemptionCodeModel.fromJson(
           Map<String, dynamic>.from(response.data as Map),
         );
       }
@@ -237,14 +261,14 @@ class MarketplaceRepository {
     return null;
   }
 
-  /// Reporta una incidencia sobre un voucher.
-  /// POST /marketplace/vouchers/<id>/incident/  body: {reason, notes}
-  /// Response 201: {ticket_id, voucher_code, reason, notes, status, created_at}
-  Future<Map<String, dynamic>> reportVoucherIncident(String voucherId,
+  /// Reporta una incidencia sobre un código de canje.
+  /// POST /marketplace/redemption-codes/<id>/incident/  body: {reason, notes}
+  /// Response 201: {ticket_id, redemption_code, reason, notes, status, created_at}
+  Future<Map<String, dynamic>> reportRedemptionCodeIncident(String redemptionCodeId,
       {required String reason, String notes = ''}) async {
     try {
       final response = await _dio.post(
-        ApiConfig.voucherIncident(voucherId),
+        ApiConfig.redemptionCodeIncident(redemptionCodeId),
         data: {'reason': reason, if (notes.isNotEmpty) 'notes': notes},
       );
       if (response.data is Map) {
@@ -256,17 +280,17 @@ class MarketplaceRepository {
     }
   }
 
-  /// Preview de un voucher por código (sin canjearlo).
-  /// GET /marketplace/vouchers/preview/?code=X
-  /// Retorna el VoucherModel con datos del producto, cliente y pago.
-  Future<VoucherModel?> previewVoucher(String code) async {
+  /// Preview de un código de canje (sin canjearlo).
+  /// GET /marketplace/redemption-codes/preview/?code=X
+  /// Retorna el RedemptionCodeModel con datos del producto, cliente y pago.
+  Future<RedemptionCodeModel?> previewRedemptionCode(String code) async {
     try {
       final response = await _dio.get(
-        ApiConfig.vouchersPreview,
+        ApiConfig.redemptionCodesPreview,
         queryParameters: {'code': code},
       );
       if (response.statusCode == 200 && response.data is Map) {
-        return VoucherModel.fromJson(
+        return RedemptionCodeModel.fromJson(
             Map<String, dynamic>.from(response.data as Map));
       }
     } catch (e) {
@@ -275,15 +299,15 @@ class MarketplaceRepository {
     return null;
   }
 
-  /// Inicia un pago Stripe para un voucher con precio monetario.
-  /// POST /marketplace/vouchers/{code}/initiate-payment/
+  /// Inicia un pago Stripe para un código de canje con precio monetario.
+  /// POST /marketplace/redemption-codes/{code}/initiate-payment/
   /// Body opcional: { "payment_method_id": "pm_xxx" }
   /// Respuesta: { client_secret, payment_intent_id, amount_eur, status }
-  Future<Map<String, dynamic>> initiateVoucherPayment(String code,
+  Future<Map<String, dynamic>> initiateRedemptionCodePayment(String code,
       {String? paymentMethodId}) async {
     try {
       final response = await _dio.post(
-        ApiConfig.voucherInitiatePayment(code),
+        ApiConfig.redemptionCodeInitiatePayment(code),
         data: {
           if (paymentMethodId != null && paymentMethodId.isNotEmpty)
             'payment_method_id': paymentMethodId,
@@ -298,11 +322,38 @@ class MarketplaceRepository {
     }
   }
 
-  Future<Map<String, dynamic>?> validateVoucher(String code) async {
+  /// Valida un código en el mostrador (ST-CJ-02): el código pasa a IN_PROGRESS.
+  /// No consume puntos todavía; eso es la entrega.
+  /// POST /marketplace/stores/redemption-codes/validation/  body: {code, pin?}
+  /// El PIN se envía solo si la tienda tiene uno definido; el backend lo exige
+  /// en ese caso y responde 403 si falta o es incorrecto.
+  Future<Map<String, dynamic>?> validateRedemptionCode(String code,
+      {String? pin}) async {
     try {
       final response = await _dio.post(
-        ApiConfig.vouchersValidate,
-        data: {'code': code},
+        ApiConfig.redemptionCodesValidate,
+        data: {
+          'code': code,
+          if (pin != null && pin.isNotEmpty) 'pin': pin,
+        },
+      );
+      if (response.statusCode == 200 && response.data is Map) {
+        return Map<String, dynamic>.from(response.data as Map);
+      }
+    } catch (e) {
+      throw toApiException(e);
+    }
+    return null;
+  }
+
+  /// Entrega un código ya validado (ST-CJ-03): pasa a DELIVERED y el backend
+  /// consume los puntos bloqueados. Falla con 400 si el código no está en
+  /// IN_PROGRESS (no se puede entregar sin validar antes).
+  /// POST /marketplace/stores/redemption-codes/<id>/delivery/  (sin body)
+  Future<Map<String, dynamic>?> deliverRedemptionCode(String redemptionCodeId) async {
+    try {
+      final response = await _dio.post(
+        ApiConfig.redemptionCodeDelivery(redemptionCodeId),
       );
       if (response.statusCode == 200 && response.data is Map) {
         return Map<String, dynamic>.from(response.data as Map);
@@ -476,14 +527,14 @@ class MarketplaceRepository {
   }
 
   /// Canjes por día para la tienda.
-  /// GET /marketplace/analytics/vouchers/daily/?store_id=X&days=30
-  Future<List<Map<String, dynamic>>> fetchAnalyticsVouchersDaily(
+  /// GET /marketplace/analytics/redemption-codes/daily/?store_id=X&days=30
+  Future<List<Map<String, dynamic>>> fetchAnalyticsRedemptionCodesDaily(
       String storeId, {
       int days = 30,
   }) async {
     try {
       final response = await _dio.get(
-        ApiConfig.analyticsVouchersDaily,
+        ApiConfig.analyticsRedemptionCodesDaily,
         queryParameters: {
           if (storeId.isNotEmpty) 'store_id': storeId,
           'days': days,
@@ -499,12 +550,12 @@ class MarketplaceRepository {
   }
 
   /// Desglose de canjes por estado para la tienda.
-  /// GET /marketplace/analytics/vouchers/by-status/?store={id}
+  /// GET /marketplace/analytics/redemption-codes/by-status/?store={id}
   /// Retorna: { entregados, pendientes, expirados }
-  Future<Map<String, dynamic>> fetchVouchersByStatus(String storeId) async {
+  Future<Map<String, dynamic>> fetchRedemptionCodesByStatus(String storeId) async {
     try {
       final response = await _dio.get(
-        ApiConfig.analyticsVouchersByStatus,
+        ApiConfig.analyticsRedemptionCodesByStatus,
         queryParameters: {if (storeId.isNotEmpty) 'store': storeId},
       );
       if (response.data is Map) {
@@ -582,19 +633,23 @@ class MarketplaceRepository {
   /// POST /marketplace/admin/products/upload-image/ (multipart/form-data)
   /// Campo: image (JPEG / PNG / WEBP / GIF)
   /// Respuesta: { "image_url": "https://..." }
-  Future<String> uploadProductImage(XFile file) async {
+  /// Sube la imagen de un producto. El backend exige `product_id` + `image`,
+  /// así que el producto debe existir antes (crear/editar → subir con su id).
+  Future<String> uploadProductImage(XFile file, {String? productId}) async {
     try {
       final bytes = await file.readAsBytes();
       final formData = FormData.fromMap({
         // Dio infers MIME type from filename; no need for http_parser.
         'image': MultipartFile.fromBytes(bytes, filename: file.name),
+        if (productId != null && productId.isNotEmpty) 'product_id': productId,
       });
       final response = await _dio.post(
         ApiConfig.adminProductUploadImage,
         data: formData,
       );
       if (response.data is Map) {
-        final url = response.data['image_url']?.toString() ?? '';
+        final url = ApiConfig.absoluteMedia(
+            (response.data['image_url'] ?? response.data['image'])?.toString());
         if (url.isNotEmpty) return url;
       }
       throw ApiException('El servidor no devolvió una URL de imagen.');
@@ -616,7 +671,13 @@ class MarketplaceRepository {
       final response = await _dio.post(
         ApiConfig.storeBannerUpload(storeId), data: formData);
       if (response.data is Map) {
-        return response.data['banner_url']?.toString();
+        final d = response.data as Map;
+        return ApiConfig.absoluteMedia((d['banner_url'] ??
+                d['banner'] ??
+                d['banner_image'] ??
+                d['image_url'] ??
+                d['url'])
+            ?.toString());
       }
     } catch (e) {
       throw toApiException(e);
@@ -635,7 +696,12 @@ class MarketplaceRepository {
       final response = await _dio.post(
         ApiConfig.storeLogoUpload(storeId), data: formData);
       if (response.data is Map) {
-        return response.data['logo_url']?.toString();
+        final d = response.data as Map;
+        return ApiConfig.absoluteMedia((d['logo_url'] ??
+                d['logo'] ??
+                d['image_url'] ??
+                d['url'])
+            ?.toString());
       }
     } catch (e) {
       throw toApiException(e);
@@ -700,7 +766,13 @@ class MarketplaceRepository {
   Future<List<StoreUserModel>> fetchStoreUsers(String storeId) async {
     try {
       final response = await _dio.get(ApiConfig.storeUsers(storeId));
-      return _toList(response.data)
+      final data = response.data;
+      // Este endpoint envuelve distinto: {store_id, members: [...]}. No es el
+      // envelope canónico (results/data), así que _toList no lo desenvuelve.
+      final rawList = data is Map && data['members'] is List
+          ? data['members'] as List
+          : _toList(data);
+      return rawList
           .whereType<Map>()
           .map((e) => StoreUserModel.fromJson(Map<String, dynamic>.from(e)))
           .toList();
@@ -787,7 +859,7 @@ class MarketplaceRepository {
 
   /// Feed de actividad de una tienda específica.
   /// GET /marketplace/stores/<id>/activity/?limit=N
-  /// Devuelve {activities: [...], ...} — tipos: voucher_redeemed, product_added, system_update
+  /// Devuelve {activities: [...], ...} — tipos: redemption_code_redeemed, product_added, system_update
   Future<List<Map<String, dynamic>>> fetchStoreActivity(
     String storeId, {
     int limit = 20,
@@ -1845,6 +1917,121 @@ class MarketplaceRepository {
         data: {'action': action, if (notes != null) 'notes': notes},
       );
       return true;
+    } catch (e) {
+      throw toApiException(e);
+    }
+  }
+
+  // ──────────── CAMPAÑAS PROMOCIONALES (superadmin) ────────────
+  // Namespace points_admin (`/admin/campaigns/`). El listado es un array pelado
+  // (sin envelope). Requiere IsSuperAdmin: un store admin recibe 403.
+
+  /// GET /admin/campaigns/ — lista de campañas.
+  Future<List<CampaignModel>> fetchCampaigns() async {
+    try {
+      final response = await _dio.get(ApiConfig.adminCampaigns);
+      return _toList(response.data)
+          .whereType<Map>()
+          .map((e) => CampaignModel.fromJson(Map<String, dynamic>.from(e)))
+          .toList();
+    } catch (e) {
+      throw toApiException(e);
+    }
+  }
+
+  /// POST /admin/campaigns/ — crea una campaña. Devuelve la campaña con su `id`
+  /// (necesario para subir luego el banner). `banner_image` también se acepta
+  /// como string en el payload si ya se tiene la URL.
+  Future<CampaignModel?> createCampaign(Map<String, dynamic> payload) async {
+    try {
+      final response = await _dio.post(ApiConfig.adminCampaigns, data: payload);
+      if (response.data is Map) {
+        return CampaignModel.fromJson(
+            Map<String, dynamic>.from(response.data as Map));
+      }
+    } catch (e) {
+      throw toApiException(e);
+    }
+    return null;
+  }
+
+  /// PATCH /admin/campaigns/{id}/ — actualiza una campaña.
+  Future<CampaignModel?> updateCampaign(
+      String id, Map<String, dynamic> payload) async {
+    try {
+      final response =
+          await _dio.patch(ApiConfig.adminCampaignDetail(id), data: payload);
+      if (response.data is Map) {
+        return CampaignModel.fromJson(
+            Map<String, dynamic>.from(response.data as Map));
+      }
+    } catch (e) {
+      throw toApiException(e);
+    }
+    return null;
+  }
+
+  /// DELETE /admin/campaigns/{id}/
+  Future<void> deleteCampaign(String id) async {
+    try {
+      await _dio.delete(ApiConfig.adminCampaignDetail(id));
+    } catch (e) {
+      throw toApiException(e);
+    }
+  }
+
+  /// POST /admin/campaigns/{id}/image/ (multipart, campo `image`).
+  /// Flujo: primero crea la campaña (para tener el id), luego sube la imagen.
+  /// Respuesta: { banner_image: "https://..." }.
+  Future<String?> uploadCampaignImage(String campaignId, XFile file) async {
+    try {
+      final bytes = await file.readAsBytes();
+      final formData = FormData.fromMap({
+        'image': MultipartFile.fromBytes(bytes, filename: file.name),
+      });
+      final response = await _dio.post(
+        ApiConfig.adminCampaignImage(campaignId),
+        data: formData,
+      );
+      if (response.data is Map) {
+        final d = response.data as Map;
+        return ApiConfig.absoluteMedia((d['banner_image'] ??
+                d['image_url'] ??
+                d['image'] ??
+                d['banner'] ??
+                d['url'])
+            ?.toString());
+      }
+    } catch (e) {
+      throw toApiException(e);
+    }
+    return null;
+  }
+
+  /// GET /admin/campaigns/{id}/impact/ — analítica de rendimiento.
+  /// Trae {campaign, affects, points_granted, points_bonus, users_reached,
+  /// budget:{...}, ...}. Se devuelve crudo para la pantalla de rendimiento.
+  Future<Map<String, dynamic>> fetchCampaignImpact(String id) async {
+    try {
+      final response = await _dio.get(ApiConfig.adminCampaignImpact(id));
+      if (response.data is Map) {
+        return Map<String, dynamic>.from(response.data as Map);
+      }
+      return const {};
+    } catch (e) {
+      throw toApiException(e);
+    }
+  }
+
+  /// GET /admin/campaigns/{id}/preview/ — el banner tal como lo verá el usuario
+  /// y la tienda (mismo serializer del marketplace). Se devuelve crudo.
+  Future<Map<String, dynamic>> fetchCampaignPreview(String id) async {
+    try {
+      final response = await _dio.get(ApiConfig.adminCampaignPreview(id));
+      if (response.data is Map) {
+        return Map<String, dynamic>.from(response.data as Map);
+      }
+      return const {};
     } catch (e) {
       throw toApiException(e);
     }

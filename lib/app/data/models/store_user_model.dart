@@ -15,6 +15,11 @@ class StoreUserModel {
   final bool isOnline;
   final DateTime? lastActiveAt;
   final DateTime createdAt;
+  /// Permisos del miembro (products, redemption_codes, analytics, team, settings).
+  /// OWNER y ADMIN reciben hoy el set completo; VIEWER/MEMBER, uno más corto.
+  final List<String> permissions;
+  /// Email de quien invitó al miembro. `null` para el OWNER (no fue invitado).
+  final String? invitedBy;
 
   StoreUserModel({
     required this.id,
@@ -27,6 +32,8 @@ class StoreUserModel {
     this.isOnline = false,
     this.lastActiveAt,
     required this.createdAt,
+    this.permissions = const [],
+    this.invitedBy,
   });
 
   String get displayName {
@@ -98,9 +105,16 @@ class StoreUserModel {
           : (userRaw['name'] ?? userRaw['username'] ?? '').toString();
       avatarUrl = userRaw['avatar']?.toString() ?? userRaw['photo']?.toString();
     } else {
-      id = (json['id'] ?? '').toString();
-      email = (json['email'] ?? '').toString();
-      name = (json['name'] ?? json['full_name'] ?? '').toString();
+      // El endpoint de miembros usa `user_id`; otros usan `id`; y Django a veces
+      // aplana con doble guion bajo (`user__id`), como en store_memberships.
+      id = (json['id'] ?? json['user_id'] ?? json['user__id'] ?? '').toString();
+      email = (json['email'] ?? json['user__email'] ?? '').toString();
+      name = (json['name'] ??
+              json['full_name'] ??
+              json['user__full_name'] ??
+              json['user__name'] ??
+              '')
+          .toString();
       avatarUrl = json['avatar']?.toString() ?? json['avatar_url']?.toString();
     }
 
@@ -120,8 +134,16 @@ class StoreUserModel {
       isOnline: json['is_online'] as bool? ?? false,
       lastActiveAt: DateTime.tryParse(
           (json['last_active_at'] ?? json['lastActiveAt'] ?? '').toString()),
-      createdAt: DateTime.tryParse(
-              (json['created_at'] ?? json['createdAt'] ?? '').toString()) ??
+      permissions: json['permissions'] is List
+          ? (json['permissions'] as List).map((e) => e.toString()).toList()
+          : const [],
+      invitedBy: json['invited_by']?.toString(),
+      createdAt: DateTime.tryParse((json['created_at'] ??
+                  json['createdAt'] ??
+                  json['created'] ??
+                  json['joined_at'] ??
+                  '')
+              .toString()) ??
           DateTime.now(),
     );
   }

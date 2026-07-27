@@ -1,14 +1,12 @@
-﻿import 'dart:async';
+import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
 import '../../../data/models/support_ticket_model.dart';
 import '../../../data/models/ticket_category_model.dart';
-import '../../../data/services/auth_service.dart';
-import '../../../routes/app_pages.dart';
-import '../controllers/general_admin_controller.dart';
 import '../controllers/support_controller.dart';
+import 'backoffice_sidebar.dart';
 
 class SupportTicketsView extends StatefulWidget {
   const SupportTicketsView({super.key});
@@ -23,7 +21,6 @@ class _SupportTicketsViewState extends State<SupportTicketsView> {
   static const Color _bg          = Color(0xFFF8F7FF);
 
   late final SupportController _ctrl;
-  late final GeneralAdminController _gaCtrl;
 
   final _searchCtrl  = TextEditingController();
   final _composeCtrl = TextEditingController();
@@ -36,7 +33,6 @@ class _SupportTicketsViewState extends State<SupportTicketsView> {
   void initState() {
     super.initState();
     _ctrl   = Get.find<SupportController>();
-    _gaCtrl = Get.find<GeneralAdminController>();
   }
 
   @override
@@ -61,7 +57,7 @@ class _SupportTicketsViewState extends State<SupportTicketsView> {
     return Scaffold(
       backgroundColor: _bg,
       body: Row(children: [
-        _sidebar(context),
+        BackofficeSidebar(current: 'tickets'),
         Expanded(
           child: Row(children: [
             SizedBox(width: 380, child: _ticketList()),
@@ -73,119 +69,6 @@ class _SupportTicketsViewState extends State<SupportTicketsView> {
   }
 
   // ─── SIDEBAR ──────────────────────────────────────────────────────────────
-
-  Widget _sidebar(BuildContext context) {
-    return Container(
-      width: 220,
-      color: Colors.white,
-      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Padding(
-          padding: const EdgeInsets.fromLTRB(20, 24, 20, 4),
-          child: Row(children: [
-            Container(
-              width: 36, height: 36,
-              decoration: BoxDecoration(
-                gradient: const LinearGradient(
-                  colors: [Color(0xFF7C3AED), Color(0xFF9F67FA)],
-                  begin: Alignment.topLeft, end: Alignment.bottomRight),
-                borderRadius: BorderRadius.circular(8)),
-              child: const Icon(Icons.corporate_fare_rounded,
-                  color: Colors.white, size: 18)),
-            const SizedBox(width: 10),
-            const Expanded(child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text('Enterprise Portal',
-                    style: TextStyle(fontSize: 12, fontWeight: FontWeight.w800,
-                        color: Color(0xFF1E1B4B))),
-                Text('Gestión Global',
-                    style: TextStyle(fontSize: 9, color: Colors.grey)),
-              ],
-            )),
-          ]),
-        ),
-        Padding(
-          padding: const EdgeInsets.fromLTRB(20, 8, 20, 12),
-          child: Obx(() {
-            final name = _gaCtrl.currentUserName.value.isNotEmpty
-                ? _gaCtrl.currentUserName.value
-                : _formatAdminName(AuthService.currentUserEmail ?? '');
-            final initials = name.split(' ')
-                .where((w) => w.isNotEmpty).take(2)
-                .map((w) => w[0]).join().toUpperCase();
-            return Row(children: [
-              CircleAvatar(radius: 14, backgroundColor: _purpleLight,
-                  child: Text(initials.isEmpty ? 'SA' : initials,
-                      style: const TextStyle(fontSize: 10,
-                          fontWeight: FontWeight.w700, color: _purple))),
-              const SizedBox(width: 8),
-              Expanded(child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Text(name, style: const TextStyle(fontSize: 12,
-                    fontWeight: FontWeight.w700, color: Color(0xFF111827)),
-                    maxLines: 1, overflow: TextOverflow.ellipsis),
-                Text(_formatRole(AuthService.currentUserRole),
-                    style: const TextStyle(fontSize: 9, color: _purple,
-                        fontWeight: FontWeight.w700)),
-              ])),
-            ]);
-          }),
-        ),
-        const Divider(height: 1),
-        const SizedBox(height: 6),
-        _navItem(icon: Icons.dashboard_outlined, label: 'Dashboard',
-            onTap: () => Get.offNamed(Routes.GENERAL_ADMIN)),
-        _navItem(icon: Icons.support_agent_outlined, label: 'Soporte',
-            selected: true),
-        _navItem(icon: Icons.people_outline, label: 'Usuarios',
-            onTap: () => Get.toNamed(Routes.COMERCIOS)),
-        _navItem(icon: Icons.gavel_outlined, label: 'Legal'),
-        _navItem(icon: Icons.privacy_tip_outlined, label: 'GDPR',
-            onTap: () => Get.toNamed(Routes.LEGAL_CONSENTS)),
-        _navItem(icon: Icons.verified_user_outlined, label: 'KYBC'),
-        _navItem(icon: Icons.flag_outlined, label: 'Moderación'),
-        _navItem(icon: Icons.payments_outlined, label: 'Pagos', onTap: () => Get.toNamed(Routes.STRIPE_DISPUTES)),
-        _navItem(icon: Icons.fact_check_outlined, label: 'Cumplimiento'),
-        _navItem(icon: Icons.history_edu_outlined, label: 'Auditoría'),
-
-        const Spacer(),
-        const Divider(height: 1),
-        ListTile(dense: true,
-          leading: const Icon(Icons.logout, size: 16, color: Colors.grey),
-          title: const Text('Logout',
-              style: TextStyle(fontSize: 13, color: Colors.grey)),
-          onTap: () async {
-            await AuthService.signOut();
-            Get.offAllNamed(Routes.LOGIN);
-          }),
-        const SizedBox(height: 8),
-      ]),
-    );
-  }
-
-  Widget _navItem({
-    required IconData icon, required String label,
-    bool selected = false, VoidCallback? onTap,
-  }) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        margin: const EdgeInsets.symmetric(horizontal: 10, vertical: 1),
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
-        decoration: BoxDecoration(
-          color: selected ? _purpleLight : Colors.transparent,
-          borderRadius: BorderRadius.circular(10)),
-        child: Row(children: [
-          Icon(icon, size: 17,
-              color: selected ? _purple : Colors.grey.shade500),
-          const SizedBox(width: 10),
-          Text(label, style: TextStyle(fontSize: 13,
-              fontWeight: selected ? FontWeight.w600 : FontWeight.normal,
-              color: selected ? _purple : Colors.grey.shade700)),
-        ]),
-      ),
-    );
-  }
 
   // ─── LEFT: TICKET LIST ─────────────────────────────────────────────────────
 
@@ -776,92 +659,196 @@ class _SupportTicketsViewState extends State<SupportTicketsView> {
   // ─── DIALOGS ──────────────────────────────────────────────────────────────
 
   void _showNewTicketDialog(BuildContext context) {
-    // POST /admin/tickets/create/
-    final titleCtrl  = TextEditingController();
-    final descCtrl   = TextEditingController();
-    final userCtrl   = TextEditingController();
+    final titleCtrl = TextEditingController();
+    final descCtrl = TextEditingController();
+    final userCtrl = TextEditingController();
     TicketCategoryModel? selCategory;
     String selPriority = 'MEDIUM';
+
+    InputDecoration deco(String hint) => InputDecoration(
+          hintText: hint,
+          hintStyle: TextStyle(fontSize: 13, color: Colors.grey.shade400),
+          filled: true,
+          fillColor: const Color(0xFFF9FAFB),
+          isDense: true,
+          contentPadding:
+              const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+          enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(10),
+              borderSide: const BorderSide(color: Color(0xFFE5E7EB))),
+          focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(10),
+              borderSide: const BorderSide(color: _purple, width: 1.4)),
+        );
+
+    Widget label(String t) => Padding(
+          padding: const EdgeInsets.only(bottom: 6),
+          child: Text(t,
+              style: const TextStyle(
+                  fontSize: 12.5,
+                  fontWeight: FontWeight.w600,
+                  color: Color(0xFF374151))),
+        );
 
     showDialog<void>(
       context: context,
       builder: (ctx) => StatefulBuilder(
-        builder: (ctx, setDlgState) => AlertDialog(
+        builder: (ctx, setDlgState) => Dialog(
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-          title: const Row(children: [
-            Icon(Icons.add_circle_outline, color: _purple, size: 20),
-            SizedBox(width: 8), Text('Nuevo Ticket'),
-          ]),
-          content: SizedBox(width: 420, child: Column(
-              mainAxisSize: MainAxisSize.min, children: [
-            TextField(controller: titleCtrl,
-                decoration: const InputDecoration(
-                    labelText: 'Título', isDense: true)),
-            const SizedBox(height: 12),
-            TextField(controller: descCtrl, maxLines: 3,
-                decoration: const InputDecoration(
-                    labelText: 'Descripción', isDense: true)),
-            const SizedBox(height: 12),
-            TextField(controller: userCtrl,
-                decoration: const InputDecoration(
-                    labelText: 'ID de usuario', isDense: true,
-                    helperText: 'ID numérico del usuario afectado')),
-            const SizedBox(height: 12),
-            Row(children: [
-              // Category dropdown from backend
-              Expanded(child: DropdownButtonFormField<TicketCategoryModel>(
-                value: selCategory,
-                hint: const Text('Categoría', style: TextStyle(fontSize: 13)),
-                decoration: const InputDecoration(isDense: true),
-                items: _ctrl.categories.map((c) => DropdownMenuItem(
-                    value: c,
-                    child: Text(c.name,
-                        style: const TextStyle(fontSize: 13)))).toList(),
-                onChanged: (v) => setDlgState(() => selCategory = v),
-              )),
-              const SizedBox(width: 12),
-              // Priority
-              Expanded(child: DropdownButtonFormField<String>(
-                value: selPriority,
-                decoration: const InputDecoration(isDense: true),
-                items: const [
-                  DropdownMenuItem(value: 'LOW',    child: Text('Baja',  style: TextStyle(fontSize: 13))),
-                  DropdownMenuItem(value: 'MEDIUM', child: Text('Media', style: TextStyle(fontSize: 13))),
-                  DropdownMenuItem(value: 'HIGH',   child: Text('Alta',  style: TextStyle(fontSize: 13))),
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 440),
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.all(20),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  const Row(children: [
+                    Icon(Icons.add_circle_outline, color: _purple, size: 20),
+                    SizedBox(width: 8),
+                    Text('Nuevo Ticket',
+                        style: TextStyle(
+                            fontSize: 17,
+                            fontWeight: FontWeight.w800,
+                            color: Color(0xFF111827))),
+                  ]),
+                  const SizedBox(height: 16),
+                  label('Título'),
+                  TextField(
+                      controller: titleCtrl,
+                      style: const TextStyle(fontSize: 14),
+                      decoration: deco('Asunto del ticket')),
+                  const SizedBox(height: 12),
+                  label('Descripción'),
+                  TextField(
+                      controller: descCtrl,
+                      maxLines: 3,
+                      style: const TextStyle(fontSize: 14),
+                      decoration: deco('Detalle del problema')),
+                  const SizedBox(height: 12),
+                  label('Email del usuario'),
+                  TextField(
+                      controller: userCtrl,
+                      keyboardType: TextInputType.emailAddress,
+                      style: const TextStyle(fontSize: 14),
+                      decoration: deco('correo@ejemplo.com')),
+                  const SizedBox(height: 14),
+                  Row(children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          label('Categoría'),
+                          DropdownButtonFormField<TicketCategoryModel>(
+                            initialValue: selCategory,
+                            isExpanded: true,
+                            hint: Text(
+                                _ctrl.categories.isEmpty
+                                    ? 'Sin categorías'
+                                    : 'Opcional',
+                                style: const TextStyle(fontSize: 13)),
+                            style: const TextStyle(
+                                fontSize: 13, color: Color(0xFF111827)),
+                            decoration: deco(''),
+                            items: _ctrl.categories
+                                .map((c) => DropdownMenuItem(
+                                    value: c,
+                                    child: Text(c.name,
+                                        style: const TextStyle(fontSize: 13),
+                                        overflow: TextOverflow.ellipsis)))
+                                .toList(),
+                            onChanged: (v) =>
+                                setDlgState(() => selCategory = v),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          label('Prioridad'),
+                          DropdownButtonFormField<String>(
+                            initialValue: selPriority,
+                            isExpanded: true,
+                            style: const TextStyle(
+                                fontSize: 13, color: Color(0xFF111827)),
+                            decoration: deco(''),
+                            items: const [
+                              DropdownMenuItem(
+                                  value: 'LOW',
+                                  child: Text('Baja',
+                                      style: TextStyle(fontSize: 13))),
+                              DropdownMenuItem(
+                                  value: 'MEDIUM',
+                                  child: Text('Media',
+                                      style: TextStyle(fontSize: 13))),
+                              DropdownMenuItem(
+                                  value: 'HIGH',
+                                  child: Text('Alta',
+                                      style: TextStyle(fontSize: 13))),
+                            ],
+                            onChanged: (v) => setDlgState(
+                                () => selPriority = v ?? 'MEDIUM'),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ]),
+                  const SizedBox(height: 22),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.end,
+                    children: [
+                      TextButton(
+                          onPressed: () => Navigator.of(ctx).pop(),
+                          child: const Text('Cancelar')),
+                      const SizedBox(width: 8),
+                      Obx(() => ElevatedButton(
+                            style: ElevatedButton.styleFrom(
+                                backgroundColor: _purple,
+                                foregroundColor: Colors.white,
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 20, vertical: 12),
+                                shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(10))),
+                            onPressed: _ctrl.isCreating.value
+                                ? null
+                                : () async {
+                                    if (titleCtrl.text.trim().isEmpty ||
+                                        userCtrl.text.trim().isEmpty) {
+                                      Get.snackbar('Faltan datos',
+                                          'El título y el email del usuario son obligatorios',
+                                          snackPosition: SnackPosition.BOTTOM);
+                                      return;
+                                    }
+                                    final ok = await _ctrl.createTicket(
+                                      title: titleCtrl.text,
+                                      description: descCtrl.text,
+                                      userEmail: userCtrl.text.trim(),
+                                      priority: selPriority,
+                                      categoryId: selCategory?.id,
+                                    );
+                                    if (ok && ctx.mounted) {
+                                      Navigator.of(ctx).pop();
+                                    }
+                                  },
+                            child: _ctrl.isCreating.value
+                                ? const SizedBox(
+                                    width: 16,
+                                    height: 16,
+                                    child: CircularProgressIndicator(
+                                        strokeWidth: 2, color: Colors.white))
+                                : const Text('Crear Ticket',
+                                    style:
+                                        TextStyle(fontWeight: FontWeight.w700)),
+                          )),
+                    ],
+                  ),
                 ],
-                onChanged: (v) => setDlgState(() => selPriority = v ?? 'MEDIUM'),
-              )),
-            ]),
-          ])),
-          actions: [
-            TextButton(onPressed: () => Navigator.of(ctx).pop(),
-                child: const Text('Cancelar')),
-            Obx(() => ElevatedButton(
-              style: ElevatedButton.styleFrom(backgroundColor: _purple,
-                  foregroundColor: Colors.white,
-                  shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10))),
-              onPressed: _ctrl.isCreating.value ? null : () async {
-                if (titleCtrl.text.trim().isEmpty ||
-                    userCtrl.text.trim().isEmpty ||
-                    selCategory == null) {
-                  return;
-                }
-                final ok = await _ctrl.createTicket(
-                  title:       titleCtrl.text,
-                  description: descCtrl.text,
-                  categoryId:  selCategory!.id,
-                  priority:    selPriority,
-                  userId:      userCtrl.text.trim(),
-                );
-                if (ok && ctx.mounted) Navigator.of(ctx).pop();
-              },
-              child: _ctrl.isCreating.value
-                  ? const SizedBox(width: 16, height: 16,
-                      child: CircularProgressIndicator(strokeWidth: 2,
-                          color: Colors.white))
-                  : const Text('Crear Ticket'))),
-          ],
+              ),
+            ),
+          ),
         ),
       ),
     );
@@ -886,7 +873,7 @@ class _SupportTicketsViewState extends State<SupportTicketsView> {
                   style: TextStyle(color: Colors.grey))
             else
               DropdownButtonFormField<AgentModel>(
-                value: selected,
+                initialValue: selected,
                 hint: const Text('Seleccionar agente',
                     style: TextStyle(fontSize: 13)),
                 decoration: const InputDecoration(isDense: true),
@@ -1007,20 +994,4 @@ class _SupportTicketsViewState extends State<SupportTicketsView> {
            '${local.minute.toString().padLeft(2,'0')}';
   }
 
-  String _formatRole(String? role) {
-    switch (role) {
-      case 'superadmin': return 'Super Admin';
-      case 'store_admin': return 'Store Admin';
-      case 'staff': return 'Staff';
-      default: return 'Admin';
-    }
-  }
-
-  String _formatAdminName(String email) {
-    final local = email.split('@').first;
-    return local.split(RegExp(r'[._\-]'))
-        .where((w) => w.isNotEmpty)
-        .map((w) => '${w[0].toUpperCase()}${w.substring(1)}')
-        .join(' ');
-  }
 }

@@ -1,5 +1,6 @@
 import 'package:get/get.dart';
 
+import '../../../../utils/app_config.dart';
 import '../../../../utils/dummy_helper.dart';
 import '../../../components/custom_snackbar.dart';
 import '../../../data/models/product_model.dart';
@@ -71,17 +72,24 @@ class CartController extends GetxController {
   }
 
   /// get the cart products from the product list
+  // NOTA: el carrito aún se apoya en [DummyHelper] como estado en memoria y no
+  // está cableado al backend. En builds reales arranca vacío (no muestra los
+  // productos de demostración) hasta que exista un carrito real.
   getCartProducts() {
     products.assignAll(
-      DummyHelper.products.where((p) => p.quantity > 0).toList(),
+      AppConfig.useDummyData
+          ? DummyHelper.products.where((p) => p.quantity > 0).toList()
+          : <ProductModel>[],
     );
     update();
   }
 
   /// clear products in cart and reset cart items count
   clearCart() {
-    for (final p in DummyHelper.products) {
-      p.quantity = 0;
+    if (AppConfig.useDummyData) {
+      for (final p in DummyHelper.products) {
+        p.quantity = 0;
+      }
     }
     products.clear();
     Get.find<BaseController>().getCartItemsCount();

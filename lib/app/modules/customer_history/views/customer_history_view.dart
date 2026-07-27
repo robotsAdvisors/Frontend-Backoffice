@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
 import '../../../data/models/order_model.dart';
-import '../../../data/models/voucher_model.dart';
+import '../../../data/models/redemption_code_model.dart';
 import '../controllers/customer_history_controller.dart';
 
 class CustomerHistoryView extends GetView<CustomerHistoryController> {
@@ -124,7 +124,7 @@ class CustomerHistoryView extends GetView<CustomerHistoryController> {
           const SizedBox(height: 16),
           pending.isEmpty
               ? _emptyState()
-              : _voucherSection(pending),
+              : _redemptionCodeSection(pending),
           _footerLinks(pending.isNotEmpty ? pending.first.storeName : null),
           const SizedBox(height: 32),
           if (past.isNotEmpty) _historySection(past),
@@ -135,35 +135,35 @@ class CustomerHistoryView extends GetView<CustomerHistoryController> {
     );
   }
 
-  // ── Voucher cards (pending) ──────────────────────────────────────────────
+  // ── RedemptionCode cards (pending) ──────────────────────────────────────────────
 
-  Widget _voucherSection(List<VoucherModel> vouchers) {
-    if (vouchers.length == 1) {
+  Widget _redemptionCodeSection(List<RedemptionCodeModel> redemptionCodes) {
+    if (redemptionCodes.length == 1) {
       return Padding(
         padding: const EdgeInsets.symmetric(horizontal: 24),
-        child: _voucherCard(vouchers.first),
+        child: _redemptionCodeCard(redemptionCodes.first),
       );
     }
     return SizedBox(
       height: 680,
       child: PageView.builder(
         controller: PageController(viewportFraction: 0.9),
-        itemCount: vouchers.length,
+        itemCount: redemptionCodes.length,
         itemBuilder: (_, i) => Padding(
           padding: const EdgeInsets.symmetric(horizontal: 8),
-          child: _voucherCard(vouchers[i]),
+          child: _redemptionCodeCard(redemptionCodes[i]),
         ),
       ),
     );
   }
 
-  Widget _voucherCard(VoucherModel voucher) {
-    final productName = voucher.productName?.isNotEmpty == true
-        ? voucher.productName!
-        : controller.productNameFor(voucher);
+  Widget _redemptionCodeCard(RedemptionCodeModel redemptionCode) {
+    final productName = redemptionCode.productName?.isNotEmpty == true
+        ? redemptionCode.productName!
+        : controller.productNameFor(redemptionCode);
     final storeName =
-        voucher.storeName?.isNotEmpty == true ? voucher.storeName! : '';
-    final expiresAt = voucher.expiresAt;
+        redemptionCode.storeName?.isNotEmpty == true ? redemptionCode.storeName! : '';
+    final expiresAt = redemptionCode.expiresAt;
     final expiryStr =
         expiresAt != null ? _formatDate(expiresAt.toLocal()) : '—';
 
@@ -183,9 +183,9 @@ class CustomerHistoryView extends GetView<CustomerHistoryController> {
         mainAxisSize: MainAxisSize.min,
         children: [
           const SizedBox(height: 28),
-          _productImage(voucher),
+          _productImage(redemptionCode),
           const SizedBox(height: 14),
-          _statusBadge(voucher),
+          _statusBadge(redemptionCode),
           const SizedBox(height: 14),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 24),
@@ -221,7 +221,7 @@ class CustomerHistoryView extends GetView<CustomerHistoryController> {
           const SizedBox(height: 22),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 20),
-            child: _qrArea(voucher),
+            child: _qrArea(redemptionCode),
           ),
           const SizedBox(height: 14),
           const Padding(
@@ -251,7 +251,7 @@ class CustomerHistoryView extends GetView<CustomerHistoryController> {
                           fontWeight: FontWeight.w600),
                     ),
                     Text(
-                      '${voucher.pointsUsed} pts',
+                      '${redemptionCode.pointsUsed} pts',
                       style: const TextStyle(
                           fontSize: 20,
                           fontWeight: FontWeight.w800,
@@ -311,7 +311,7 @@ class CustomerHistoryView extends GetView<CustomerHistoryController> {
     );
   }
 
-  Widget _productImage(VoucherModel voucher) {
+  Widget _productImage(RedemptionCodeModel redemptionCode) {
     return Container(
       width: 64,
       height: 64,
@@ -324,11 +324,11 @@ class CustomerHistoryView extends GetView<CustomerHistoryController> {
     );
   }
 
-  Widget _statusBadge(VoucherModel voucher) {
-    if (voucher.isRedeemed) {
+  Widget _statusBadge(RedemptionCodeModel redemptionCode) {
+    if (redemptionCode.isRedeemed) {
       return _badge('Redeemed', Colors.grey.shade500, Icons.check_circle_outline);
     }
-    if (voucher.isExpired) {
+    if (redemptionCode.isExpired) {
       return _badge('Expired', Colors.redAccent, Icons.cancel_outlined);
     }
     return _badge('Ready to Redeem', Colors.green.shade600, Icons.check_circle_outline);
@@ -357,7 +357,7 @@ class CustomerHistoryView extends GetView<CustomerHistoryController> {
     );
   }
 
-  Widget _qrArea(VoucherModel voucher) {
+  Widget _qrArea(RedemptionCodeModel redemptionCode) {
     return Container(
       width: double.infinity,
       height: 200,
@@ -370,32 +370,32 @@ class CustomerHistoryView extends GetView<CustomerHistoryController> {
         borderRadius: BorderRadius.circular(16),
       ),
       child: Center(
-        child: voucher.qrCode != null &&
-                (voucher.qrCode!.startsWith('http') ||
-                    voucher.qrCode!.startsWith('data:'))
+        child: redemptionCode.qrCode != null &&
+                (redemptionCode.qrCode!.startsWith('http') ||
+                    redemptionCode.qrCode!.startsWith('data:'))
             ? ClipRRect(
                 borderRadius: BorderRadius.circular(8),
                 child: Image.network(
-                  voucher.qrCode!,
+                  redemptionCode.qrCode!,
                   width: 148,
                   height: 148,
                   fit: BoxFit.contain,
-                  errorBuilder: (_, __, ___) => _qrPlaceholder(voucher),
+                  errorBuilder: (_, __, ___) => _qrPlaceholder(redemptionCode),
                 ),
               )
-            : _qrPlaceholder(voucher),
+            : _qrPlaceholder(redemptionCode),
       ),
     );
   }
 
-  Widget _qrPlaceholder(VoucherModel voucher) {
+  Widget _qrPlaceholder(RedemptionCodeModel redemptionCode) {
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
         const Icon(Icons.qr_code_2, size: 100, color: Colors.white),
         const SizedBox(height: 8),
         Text(
-          voucher.code,
+          redemptionCode.code,
           style: const TextStyle(
               color: Colors.white60,
               fontSize: 11,
@@ -501,7 +501,7 @@ class CustomerHistoryView extends GetView<CustomerHistoryController> {
                     fontWeight: FontWeight.w600,
                     color: Colors.black54)),
             const SizedBox(height: 8),
-            const Text('Canjea puntos en el Marketplace para obtener vouchers.',
+            const Text('Canjea puntos en el Marketplace para obtener redemptionCodes.',
                 textAlign: TextAlign.center,
                 style: TextStyle(fontSize: 13, color: Colors.grey)),
           ],
@@ -512,7 +512,7 @@ class CustomerHistoryView extends GetView<CustomerHistoryController> {
 
   // ── History (redeemed / expired) ─────────────────────────────────────────
 
-  Widget _historySection(List<VoucherModel> past) {
+  Widget _historySection(List<RedemptionCodeModel> past) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 24),
       child: Column(
@@ -531,13 +531,15 @@ class CustomerHistoryView extends GetView<CustomerHistoryController> {
     );
   }
 
-  Widget _historyTile(VoucherModel voucher) {
-    final status = controller.statusLabel(voucher);
-    final statusColor = status == 'Canjeado'
+  Widget _historyTile(RedemptionCodeModel redemptionCode) {
+    final status = controller.statusLabel(redemptionCode);
+    final statusColor = redemptionCode.isDelivered
         ? Colors.green.shade600
-        : status == 'Pendiente'
-            ? Colors.orange
-            : Colors.redAccent;
+        : redemptionCode.isInProgress
+            ? Colors.blue.shade600
+            : status == 'Pendiente'
+                ? Colors.orange
+                : Colors.redAccent;
 
     return Container(
       margin: const EdgeInsets.only(bottom: 10),
@@ -561,9 +563,11 @@ class CustomerHistoryView extends GetView<CustomerHistoryController> {
               borderRadius: BorderRadius.circular(10),
             ),
             child: Icon(
-              status == 'Canjeado'
+              redemptionCode.isDelivered
                   ? Icons.check_circle_outline
-                  : Icons.cancel_outlined,
+                  : redemptionCode.isInProgress
+                      ? Icons.hourglass_bottom
+                      : Icons.cancel_outlined,
               color: statusColor,
               size: 20,
             ),
@@ -574,16 +578,16 @@ class CustomerHistoryView extends GetView<CustomerHistoryController> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  controller.productNameFor(voucher),
+                  controller.productNameFor(redemptionCode),
                   style: const TextStyle(
                       fontSize: 14, fontWeight: FontWeight.w600),
                   overflow: TextOverflow.ellipsis,
                 ),
                 const SizedBox(height: 2),
                 Text(
-                  voucher.redeemedAt != null
-                      ? 'Canjeado ${_formatDate(voucher.redeemedAt!.toLocal())}'
-                      : 'Expirado ${voucher.expiresAt != null ? _formatDate(voucher.expiresAt!.toLocal()) : ''}',
+                  redemptionCode.redeemedAt != null
+                      ? 'Entregado ${_formatDate(redemptionCode.redeemedAt!.toLocal())}'
+                      : 'Expirado ${redemptionCode.expiresAt != null ? _formatDate(redemptionCode.expiresAt!.toLocal()) : ''}',
                   style:
                       const TextStyle(fontSize: 11, color: Colors.grey),
                 ),
@@ -594,22 +598,22 @@ class CustomerHistoryView extends GetView<CustomerHistoryController> {
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
               Text(
-                '${voucher.pointsUsed} pts',
+                '${redemptionCode.pointsUsed} pts',
                 style: const TextStyle(
                     fontSize: 13,
                     fontWeight: FontWeight.w700,
                     color: _purple),
               ),
-              if (controller.canRate(voucher))
+              if (controller.canRate(redemptionCode))
                 Obx(() => Row(
                       mainAxisSize: MainAxisSize.min,
                       children: List.generate(
                           5,
                           (i) => GestureDetector(
                                 onTap: () =>
-                                    controller.rateVoucher(voucher.id, i + 1),
+                                    controller.rateRedemptionCode(redemptionCode.id, i + 1),
                                 child: Icon(
-                                  controller.ratingFor(voucher.id) > i
+                                  controller.ratingFor(redemptionCode.id) > i
                                       ? Icons.star
                                       : Icons.star_border,
                                   color: Colors.amber,

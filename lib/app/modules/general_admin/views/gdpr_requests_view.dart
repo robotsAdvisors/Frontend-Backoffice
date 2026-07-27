@@ -1,14 +1,12 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
 import '../../../data/models/gdpr_request_model.dart';
-import '../../../data/services/auth_service.dart';
-import '../../../routes/app_pages.dart';
 import '../controllers/gdpr_controller.dart';
-import '../controllers/general_admin_controller.dart';
+import 'backoffice_sidebar.dart';
 
 class GdprRequestsView extends StatelessWidget {
-  const GdprRequestsView({Key? key}) : super(key: key);
+  const GdprRequestsView({super.key});
 
   static const Color _purple      = Color(0xFF7C3AED);
   static const Color _purpleLight = Color(0xFFEDE9FE);
@@ -17,135 +15,17 @@ class GdprRequestsView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final ctrl     = Get.find<GdprController>();
-    final adminCtrl = Get.isRegistered<GeneralAdminController>()
-        ? Get.find<GeneralAdminController>()
-        : null;
 
     return Scaffold(
       backgroundColor: _bg,
       body: Row(children: [
-        _sidebar(adminCtrl),
+        BackofficeSidebar(current: 'gdpr'),
         Expanded(child: _mainArea(context, ctrl)),
       ]),
     );
   }
 
   // ─── SIDEBAR ─────────────────────────────────────────────────────────────
-
-  Widget _sidebar(GeneralAdminController? adminCtrl) {
-    return Container(
-      width: 220,
-      color: Colors.white,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Padding(
-            padding: EdgeInsets.fromLTRB(20, 24, 20, 12),
-            child: Text('Backoffice',
-                style: TextStyle(
-                    fontSize: 16, fontWeight: FontWeight.w800,
-                    color: Color(0xFF1E1B4B))),
-          ),
-          const Divider(height: 1),
-          const SizedBox(height: 8),
-          _navItem(Icons.dashboard_outlined,   'Dashboard',
-              onTap: () => Get.offNamed(Routes.GENERAL_ADMIN)),
-          _navItem(Icons.people_outline,        'Usuarios',
-              onTap: () => Get.toNamed(Routes.COMERCIOS)),
-          _navItem(Icons.privacy_tip_outlined,  'GDPR', selected: true),
-          _navItem(Icons.gavel_outlined,        'Legal'),
-          _navItem(Icons.flag_outlined,         'Moderación'),
-          _navItem(Icons.payments_outlined,     'Pagos', onTap: () => Get.toNamed(Routes.STRIPE_DISPUTES)),
-          _navItem(Icons.fact_check_outlined,   'Auditoría'),
-
-          const Spacer(),
-          const Divider(height: 1),
-          Padding(
-            padding: const EdgeInsets.all(16),
-            child: Row(children: [
-              CircleAvatar(
-                radius: 18, backgroundColor: _purple,
-                child: adminCtrl != null
-                    ? Obx(() => Text(
-                          adminCtrl.currentUserInitials.value.isEmpty
-                              ? 'SA'
-                              : adminCtrl.currentUserInitials.value,
-                          style: const TextStyle(fontSize: 11,
-                              fontWeight: FontWeight.w700, color: Colors.white)))
-                    : const Text('SA',
-                        style: TextStyle(fontSize: 11,
-                            fontWeight: FontWeight.w700, color: Colors.white)),
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: adminCtrl != null
-                    ? Obx(() => Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              adminCtrl.currentUserName.value.isEmpty
-                                  ? 'Super Admin'
-                                  : adminCtrl.currentUserName.value,
-                              style: const TextStyle(fontSize: 12,
-                                  fontWeight: FontWeight.w700,
-                                  color: Color(0xFF1E1B4B)),
-                              maxLines: 1, overflow: TextOverflow.ellipsis,
-                            ),
-                            const Text('Letdem Tienda',
-                                style: TextStyle(fontSize: 10, color: Colors.grey)),
-                          ],
-                        ))
-                    : const Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text('Super Admin',
-                              style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700)),
-                          Text('Letdem Tienda',
-                              style: TextStyle(fontSize: 10, color: Colors.grey)),
-                        ],
-                      ),
-              ),
-            ]),
-          ),
-          ListTile(
-            dense: true,
-            leading: const Icon(Icons.logout, size: 18, color: Colors.grey),
-            title: const Text('Logout', style: TextStyle(fontSize: 13, color: Colors.grey)),
-            onTap: () async {
-              await AuthService.signOut();
-              Get.offAllNamed(Routes.LOGIN);
-            },
-          ),
-          const SizedBox(height: 8),
-        ],
-      ),
-    );
-  }
-
-  Widget _navItem(IconData icon, String label,
-      {bool selected = false, VoidCallback? onTap}) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        margin: const EdgeInsets.symmetric(horizontal: 10, vertical: 2),
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-        decoration: BoxDecoration(
-          color: selected ? _purpleLight : Colors.transparent,
-          borderRadius: BorderRadius.circular(10),
-        ),
-        child: Row(children: [
-          Icon(icon, size: 18,
-              color: selected ? _purple : Colors.grey.shade500),
-          const SizedBox(width: 10),
-          Text(label, style: TextStyle(
-            fontSize: 13,
-            fontWeight: selected ? FontWeight.w600 : FontWeight.normal,
-            color: selected ? _purple : Colors.grey.shade700,
-          )),
-        ]),
-      ),
-    );
-  }
 
   // ─── MAIN AREA ────────────────────────────────────────────────────────────
 

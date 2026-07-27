@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
-import '../../../data/models/voucher_model.dart';
+import '../../../data/models/redemption_code_model.dart';
 import '../../../data/services/auth_service.dart';
 import '../../../routes/app_pages.dart';
 import '../controllers/admin_controller.dart';
@@ -29,10 +29,10 @@ class _IncidenciasViewState extends State<IncidenciasView> {
   final _codeCtrl  = TextEditingController();
   final _notesCtrl = TextEditingController();
 
-  // ⚠️ HARDCODED: backend should expose GET /marketplace/vouchers/incident-reasons/
+  // ⚠️ HARDCODED: backend should expose GET /marketplace/redemption-codes/incident-reasons/
   static const List<String> _reasons = [
     'Error en validación',
-    'Voucher no reconocido',
+    'Código de canje no reconocido',
     'Doble cobro o redención',
     'Producto no disponible',
     'Problema técnico del sistema',
@@ -55,7 +55,7 @@ class _IncidenciasViewState extends State<IncidenciasView> {
   void dispose() {
     _codeCtrl.dispose();
     _notesCtrl.dispose();
-    _ctrl.clearVoucherPreview();
+    _ctrl.clearRedemptionCodePreview();
     super.dispose();
   }
 
@@ -239,8 +239,8 @@ class _IncidenciasViewState extends State<IncidenciasView> {
         ]),
         const SizedBox(height: 20),
 
-        // ── Voucher lookup ─────────────────────────────────────────────────
-        const Text('Código del voucher',
+        // ── RedemptionCode lookup ─────────────────────────────────────────────────
+        const Text('Código del redemptionCode',
             style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: _dark)),
         const SizedBox(height: 6),
         Row(children: [
@@ -267,7 +267,7 @@ class _IncidenciasViewState extends State<IncidenciasView> {
             ),
           ),
           const SizedBox(width: 8),
-          Obx(() => _ctrl.isPreviewingVoucher.value
+          Obx(() => _ctrl.isPreviewingRedemptionCode.value
               ? const SizedBox(
                   width: 44, height: 44,
                   child: Center(
@@ -283,11 +283,11 @@ class _IncidenciasViewState extends State<IncidenciasView> {
                         borderRadius: BorderRadius.circular(10)),
                     padding: const EdgeInsets.symmetric(horizontal: 14),
                   ),
-                  onPressed: () => _ctrl.previewVoucherCode(_codeCtrl.text.trim()),
+                  onPressed: () => _ctrl.previewRedemptionCodeCode(_codeCtrl.text.trim()),
                   child: const Icon(Icons.search, size: 18),
                 )),
         ]),
-        // Error or voucher preview
+        // Error or redemptionCode preview
         Obx(() {
           final err = _ctrl.previewError.value;
           if (err.isNotEmpty) {
@@ -301,9 +301,9 @@ class _IncidenciasViewState extends State<IncidenciasView> {
               ]),
             );
           }
-          final v = _ctrl.previewedVoucher.value;
+          final v = _ctrl.previewedRedemptionCode.value;
           if (v == null) return const SizedBox.shrink();
-          return _voucherPreviewTile(v);
+          return _redemptionCodePreviewTile(v);
         }),
         const SizedBox(height: 20),
 
@@ -364,13 +364,13 @@ class _IncidenciasViewState extends State<IncidenciasView> {
 
         // ── Submit ─────────────────────────────────────────────────────────
         Obx(() {
-          final hasVoucher = _ctrl.previewedVoucher.value != null;
+          final hasRedemptionCode = _ctrl.previewedRedemptionCode.value != null;
           return SizedBox(
             width: double.infinity,
             child: ElevatedButton.icon(
               style: ElevatedButton.styleFrom(
-                backgroundColor: hasVoucher ? _purple : Colors.grey.shade200,
-                foregroundColor: hasVoucher ? Colors.white : Colors.grey,
+                backgroundColor: hasRedemptionCode ? _purple : Colors.grey.shade200,
+                foregroundColor: hasRedemptionCode ? Colors.white : Colors.grey,
                 padding: const EdgeInsets.symmetric(vertical: 14),
                 shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12)),
@@ -388,7 +388,7 @@ class _IncidenciasViewState extends State<IncidenciasView> {
                     fontSize: 14, fontWeight: FontWeight.w600),
               ),
               onPressed:
-                  hasVoucher && !_isSubmitting ? _submitIncident : null,
+                  hasRedemptionCode && !_isSubmitting ? _submitIncident : null,
             ),
           );
         }),
@@ -396,10 +396,10 @@ class _IncidenciasViewState extends State<IncidenciasView> {
     );
   }
 
-  Widget _voucherPreviewTile(VoucherModel v) {
+  Widget _redemptionCodePreviewTile(RedemptionCodeModel v) {
     final customerName = _ctrl.customerNameFor(v);
     final productName  = _ctrl.productNameFor(v);
-    final statusLbl    = _voucherStatusLabel(v.status);
+    final statusLbl    = _redemptionCodeStatusLabel(v.status);
     return Container(
       margin: const EdgeInsets.only(top: 10),
       padding: const EdgeInsets.all(12),
@@ -414,7 +414,7 @@ class _IncidenciasViewState extends State<IncidenciasView> {
           const Row(children: [
             Icon(Icons.check_circle_outline, size: 14, color: _purple),
             SizedBox(width: 4),
-            Text('Voucher encontrado',
+            Text('Código de canje encontrado',
                 style: TextStyle(
                     fontSize: 12,
                     fontWeight: FontWeight.w600,
@@ -422,7 +422,7 @@ class _IncidenciasViewState extends State<IncidenciasView> {
           ]),
           GestureDetector(
             onTap: () {
-              _ctrl.clearVoucherPreview();
+              _ctrl.clearRedemptionCodePreview();
               _codeCtrl.clear();
             },
             child: const Icon(Icons.close, size: 15, color: _purple),
@@ -490,19 +490,19 @@ class _IncidenciasViewState extends State<IncidenciasView> {
         _criteriaItem(
           icon: Icons.error_outline, color: _red,
           title: 'Error de validación',
-          desc: 'El voucher no pudo procesarse correctamente en el sistema.',
+          desc: 'El redemptionCode no pudo procesarse correctamente en el sistema.',
         ),
         const SizedBox(height: 14),
         _criteriaItem(
           icon: Icons.money_off_outlined, color: _amber,
           title: 'Doble cobro',
-          desc: 'El cliente fue cargado o canjeado dos veces por el mismo voucher.',
+          desc: 'El cliente fue cargado o canjeado dos veces por el mismo redemptionCode.',
         ),
         const SizedBox(height: 14),
         _criteriaItem(
           icon: Icons.inventory_2_outlined, color: _purple,
           title: 'Producto no disponible',
-          desc: 'El producto vinculado al voucher no estaba disponible al momento del canje.',
+          desc: 'El producto vinculado al redemptionCode no estaba disponible al momento del canje.',
         ),
         const SizedBox(height: 14),
         _criteriaItem(
@@ -634,7 +634,7 @@ class _IncidenciasViewState extends State<IncidenciasView> {
   Widget _incidentRow(Map<String, dynamic> incident) {
     final ticketId   = incident['ticket_id']?.toString() ?? '—';
     final reason     = incident['reason']?.toString() ?? '';
-    final code       = incident['voucher_code']?.toString() ?? '';
+    final code       = incident['redemption_code']?.toString() ?? '';
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8),
       child: Row(children: [
@@ -694,19 +694,23 @@ class _IncidenciasViewState extends State<IncidenciasView> {
 
   // ─── HELPERS ──────────────────────────────────────────────────────────────
 
-  String _voucherStatusLabel(VoucherStatus status) => switch (status) {
-    VoucherStatus.pending   => 'Pendiente',
-    VoucherStatus.paid      => 'Pagado',
-    VoucherStatus.redeemed  => 'Canjeado',
-    VoucherStatus.expired   => 'Expirado',
-    VoucherStatus.cancelled => 'Cancelado',
+  String _redemptionCodeStatusLabel(RedemptionCodeStatus status) => switch (status) {
+    RedemptionCodeStatus.pending    => 'Pendiente',
+    RedemptionCodeStatus.paid       => 'Pagado',
+    RedemptionCodeStatus.inProgress => 'En proceso',
+    RedemptionCodeStatus.delivered  => 'Entregado',
+    RedemptionCodeStatus.incident   => 'Incidencia',
+    RedemptionCodeStatus.redeemed   => 'Entregado',
+    RedemptionCodeStatus.expired    => 'Expirado',
+    RedemptionCodeStatus.cancelled  => 'Cancelado',
+    RedemptionCodeStatus.rejected   => 'Rechazado',
   };
 
   // ─── SUBMIT ───────────────────────────────────────────────────────────────
 
   Future<void> _submitIncident() async {
-    final voucher = _ctrl.previewedVoucher.value;
-    if (voucher == null) return;
+    final redemptionCode = _ctrl.previewedRedemptionCode.value;
+    if (redemptionCode == null) return;
     if (_notesCtrl.text.trim().isEmpty) {
       Get.snackbar('Campo requerido', 'Describe el problema antes de enviar',
           snackPosition: SnackPosition.TOP,
@@ -716,23 +720,23 @@ class _IncidenciasViewState extends State<IncidenciasView> {
     }
     setState(() => _isSubmitting = true);
     try {
-      final result = await _ctrl.reportVoucherIncident(
-        voucher.id,
+      final result = await _ctrl.reportRedemptionCodeIncident(
+        redemptionCode.id,
         reason: _selectedReason,
         notes: _notesCtrl.text.trim(),
       );
       if (result != null) {
         setState(() {
           _sessionIncidents.insert(0, {
-            'ticket_id':    result['ticket_id']?.toString() ?? '—',
-            'reason':       _selectedReason,
-            'voucher_code': result['voucher_code']?.toString() ?? _codeCtrl.text.trim(),
+            'ticket_id':       result['ticket_id']?.toString() ?? '—',
+            'reason':          _selectedReason,
+            'redemption_code': result['redemption_code']?.toString() ?? _codeCtrl.text.trim(),
           });
         });
       }
       _codeCtrl.clear();
       _notesCtrl.clear();
-      _ctrl.clearVoucherPreview();
+      _ctrl.clearRedemptionCodePreview();
     } finally {
       if (mounted) setState(() => _isSubmitting = false);
     }

@@ -71,8 +71,8 @@ class _AnalyticsViewState extends State<AnalyticsView> {
           ),
           _navItem(
             icon: Icons.receipt_long_outlined,
-            label: 'Vouchers',
-            onTap: () => Get.toNamed(Routes.VOUCHER_HISTORY),
+            label: 'Canjes',
+            onTap: () => Get.toNamed(Routes.REDEMPTION_CODE_HISTORY),
           ),
           _navItem(
             icon: Icons.analytics_outlined,
@@ -187,7 +187,7 @@ class _AnalyticsViewState extends State<AnalyticsView> {
   }
 
   Widget _header() {
-    final hasRealData = _ctrl.dailyVouchers.isNotEmpty;
+    final hasRealData = _ctrl.dailyRedemptionCodes.isNotEmpty;
     return Row(
       children: [
         const Text(
@@ -198,7 +198,7 @@ class _AnalyticsViewState extends State<AnalyticsView> {
         Text(
           hasRealData
               ? 'Datos de los últimos 30 días (backend)'
-              : 'Datos de ${_ctrl.vouchers.length} vouchers cargados',
+              : 'Datos de ${_ctrl.redemptionCodes.length} canjes cargados',
           style: const TextStyle(fontSize: 12, color: Colors.grey),
         ),
       ],
@@ -218,7 +218,7 @@ class _AnalyticsViewState extends State<AnalyticsView> {
 
   Widget _statCards() {
     final summary = _ctrl.analyticsSummary.value;
-    final redeemed = _ctrl.redeemedVouchers;
+    final redeemed = _ctrl.redeemedRedemptionCodes;
 
     final totalRedemptions = summary['total_redemptions'] as int?
         ?? summary['this_month_redemptions'] as int?
@@ -354,12 +354,12 @@ class _AnalyticsViewState extends State<AnalyticsView> {
     final weekStart = DateTime(now.year, now.month, now.day - weekdayOffset);
     const labels = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'];
 
-    if (_ctrl.dailyVouchers.isNotEmpty) {
+    if (_ctrl.dailyRedemptionCodes.isNotEmpty) {
       final counts = List.generate(7, (i) {
         final day = weekStart.add(Duration(days: i));
         final dayStr =
             '${day.year}-${day.month.toString().padLeft(2, '0')}-${day.day.toString().padLeft(2, '0')}';
-        final entry = _ctrl.dailyVouchers.firstWhere(
+        final entry = _ctrl.dailyRedemptionCodes.firstWhere(
           (e) => e['date']?.toString() == dayStr,
           orElse: () => {'date': dayStr, 'count': 0},
         );
@@ -368,10 +368,10 @@ class _AnalyticsViewState extends State<AnalyticsView> {
       return _BarChart(counts: counts, labels: labels, color: _purple);
     }
 
-    // fallback: compute from loaded vouchers
+    // fallback: compute from loaded redemptionCodes
     final counts = List.generate(7, (i) {
       final day = weekStart.add(Duration(days: i));
-      return _ctrl.redeemedVouchers.where((v) {
+      return _ctrl.redeemedRedemptionCodes.where((v) {
         final d = v.redeemedAt ?? v.issuedAt;
         return d.year == day.year && d.month == day.month && d.day == day.day;
       }).length;
@@ -383,12 +383,12 @@ class _AnalyticsViewState extends State<AnalyticsView> {
     final now = DateTime.now();
     const labels = ['S1', 'S2', 'S3', 'S4'];
 
-    if (_ctrl.dailyVouchers.isNotEmpty) {
+    if (_ctrl.dailyRedemptionCodes.isNotEmpty) {
       final counts = List.generate(4, (week) {
         final wStart = DateTime(now.year, now.month, 1 + week * 7);
         final wEnd = wStart.add(const Duration(days: 7));
         int total = 0;
-        for (final entry in _ctrl.dailyVouchers) {
+        for (final entry in _ctrl.dailyRedemptionCodes) {
           final date = DateTime.tryParse(entry['date']?.toString() ?? '');
           if (date != null && !date.isBefore(wStart) && date.isBefore(wEnd)) {
             total += (entry['count'] as num?)?.toInt() ?? 0;
@@ -399,11 +399,11 @@ class _AnalyticsViewState extends State<AnalyticsView> {
       return _BarChart(counts: counts, labels: labels, color: _purple);
     }
 
-    // fallback: compute from loaded vouchers
+    // fallback: compute from loaded redemptionCodes
     final counts = List.generate(4, (week) {
       final start = DateTime(now.year, now.month, 1 + week * 7);
       final end = start.add(const Duration(days: 7));
-      return _ctrl.redeemedVouchers.where((v) {
+      return _ctrl.redeemedRedemptionCodes.where((v) {
         final d = v.redeemedAt ?? v.issuedAt;
         return !d.isBefore(start) && d.isBefore(end);
       }).length;
@@ -486,7 +486,7 @@ class _AnalyticsViewState extends State<AnalyticsView> {
           ),
           const SizedBox(height: 4),
           const Text(
-            'Basado en vouchers cargados',
+            'Basado en canjes cargados',
             style: TextStyle(fontSize: 11, color: Colors.grey),
           ),
           const SizedBox(height: 16),
@@ -531,15 +531,15 @@ class _AnalyticsViewState extends State<AnalyticsView> {
 
   Widget _tableRow(ProductModel p) {
     final totalForProduct =
-        _ctrl.vouchers.where((v) => v.productId == p.id).length;
+        _ctrl.redemptionCodes.where((v) => v.productId == p.id).length;
     final redeemedForProduct =
-        _ctrl.redeemedVouchers.where((v) => v.productId == p.id).length;
+        _ctrl.redeemedRedemptionCodes.where((v) => v.productId == p.id).length;
     final conversionStr = totalForProduct > 0
         ? '${(redeemedForProduct / totalForProduct * 100).toStringAsFixed(1)}%'
         : '—';
 
     final lastWeek = DateTime.now().subtract(const Duration(days: 7));
-    final recentRedeemed = _ctrl.redeemedVouchers
+    final recentRedeemed = _ctrl.redeemedRedemptionCodes
         .where((v) =>
             v.productId == p.id &&
             (v.redeemedAt ?? v.issuedAt).isAfter(lastWeek))

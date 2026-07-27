@@ -1,4 +1,5 @@
-/// Envelope genérico paginado del backend: `{data, meta:{total, page, lastPage}}`.
+/// Envelope paginado del backend (DRF): `{results, meta:{total, page, last_page}}`.
+/// Se toleran también las claves `data` / `lastPage` por compatibilidad.
 class PageMeta {
   final int total;
   final int page;
@@ -10,7 +11,9 @@ class PageMeta {
     return PageMeta(
       total: _toInt(json['total']),
       page: _toInt(json['page'], fallback: 1),
-      lastPage: _toInt(json['lastPage'], fallback: 1),
+      // El backend serializa `last_page` (snake_case); se acepta también
+      // `lastPage` por si algún endpoint lo devuelve ya en camelCase.
+      lastPage: _toInt(json['last_page'] ?? json['lastPage'], fallback: 1),
     );
   }
 
@@ -27,7 +30,9 @@ class Paginated<T> {
     Map<String, dynamic> json,
     T Function(Map<String, dynamic>) itemFromJson,
   ) {
-    final raw = (json['data'] as List?) ?? const [];
+    // El backend pagina como `{results, meta}` (DRF); se acepta también `data`
+    // por compatibilidad con endpoints que devuelvan ese envelope.
+    final raw = (json['results'] as List?) ?? (json['data'] as List?) ?? const [];
     final metaRaw = Map<String, dynamic>.from(
       (json['meta'] as Map?) ?? const {},
     );

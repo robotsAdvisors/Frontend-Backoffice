@@ -82,11 +82,11 @@ class _ReviewsViewState extends State<ReviewsView> {
               onTap: () => Get.offNamed(Routes.ADMIN)),
           _nav(Icons.star_outline,           'Reseñas', selected: true),
           _nav(Icons.swap_horiz_rounded,     'Canjes',
-              onTap: () => Get.offNamed(Routes.VOUCHER_HISTORY)),
+              onTap: () => Get.offNamed(Routes.REDEMPTION_CODE_HISTORY)),
           _nav(Icons.card_giftcard_outlined, 'Canjes y Beneficios',
               onTap: () => Get.toNamed(Routes.PREMIOS)),
           _nav(Icons.history_outlined,       'Historial',
-              onTap: () => Get.offNamed(Routes.VOUCHER_HISTORY)),
+              onTap: () => Get.offNamed(Routes.REDEMPTION_CODE_HISTORY)),
           _nav(Icons.bar_chart_outlined,     'Estadísticas',
               onTap: () => Get.toNamed(Routes.ANALYTICS)),
           _nav(Icons.info_outline,           'Info',
@@ -100,7 +100,7 @@ class _ReviewsViewState extends State<ReviewsView> {
             child: SizedBox(
               width: double.infinity,
               child: ElevatedButton.icon(
-                onPressed: () => Get.toNamed(Routes.VOUCHER_HISTORY),
+                onPressed: () => Get.toNamed(Routes.REDEMPTION_CODE_HISTORY),
                 icon: const Icon(Icons.add, size: 16, color: Colors.white),
                 label: const Text('+ Nuevo Canje',
                     style: TextStyle(fontSize: 13,
