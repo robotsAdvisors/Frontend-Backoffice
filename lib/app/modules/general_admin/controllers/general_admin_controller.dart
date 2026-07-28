@@ -1310,25 +1310,35 @@ Future<void> performDisputeAction(String id,
 
 // ── Campañas Promocionales ────────────────────────────────────────────
 
-final RxList<Map<String, dynamic>> campaigns = <Map<String, dynamic>>[].obs;
-
-/// Crea una nueva campaña y la agrega a la lista.
-/// Podés extender esto para persistir en backend.
 Future<void> createCampaign(Map<String, dynamic> payload) async {
-  campaigns.add(payload);
-  CustomSnackBar.showCustomSnackBar(
-    title: 'Campaña creada',
-    message: 'La campaña se agregó correctamente.',
-  );
+  try {
+    final newCampaign = CampaignModel.fromJson(payload);
+    campaigns.add(newCampaign);
+    CustomSnackBar.showCustomSnackBar(
+      title: 'Campaña creada',
+      message: 'La campaña se agregó correctamente.',
+    );
+  } catch (e) {
+    CustomSnackBar.showCustomErrorSnackBar(
+      title: 'Error',
+      message: 'No se pudo crear la campaña: $e',
+    );
+  }
 }
 
-/// Elimina una campaña por nombre.
-/// Podés extender esto para borrar en backend.
 Future<void> deleteCampaignByName(String name) async {
-  campaigns.removeWhere((c) => c['name'] == name);
-  CustomSnackBar.showCustomSnackBar(
-    title: 'Campaña eliminada',
-    message: 'La campaña fue eliminada correctamente.',
-  );
+  final initialLength = campaigns.length;
+  campaigns.removeWhere((c) => c.name == name);
+  if (campaigns.length < initialLength) {
+    CustomSnackBar.showCustomSnackBar(
+      title: 'Campaña eliminada',
+      message: 'La campaña fue eliminada correctamente.',
+    );
+  } else {
+    CustomSnackBar.showCustomErrorSnackBar(
+      title: 'Error',
+      message: 'No se encontró ninguna campaña con ese nombre.',
+    );
+  }
 }
 }

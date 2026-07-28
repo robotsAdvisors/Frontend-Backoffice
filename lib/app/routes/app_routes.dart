@@ -60,6 +60,9 @@ abstract class Routes {
 
   // Nueva ruta para Configuración del programa de puntos
   static const CONFIGURACION_PUNTOS = _Paths.CONFIGURACION_PUNTOS;
+
+  // Nueva ruta para Reportes Ejecutivos
+  static const REPORTS = _Paths.REPORTS;
 }
 
 abstract class _Paths {
@@ -121,4 +124,7 @@ abstract class _Paths {
 
   // Nuevo path para Configuración del programa de puntos
   static const CONFIGURACION_PUNTOS = '/backoffice/configuracion-puntos';
+
+  // Nuevo path para Reportes Ejecutivos
+  static const REPORTS = '/backoffice/reports';
 }

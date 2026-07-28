@@ -11,7 +11,7 @@ class BackofficeSidebar extends StatelessWidget {
   const BackofficeSidebar({super.key, required this.current});
 
   /// Clave del ítem activo: dashboard | tiendas | usuarios | campanias |
-  /// moderacion | publicaciones | kybc | legal | gdpr | politicas | pagos | tickets | wallet | configuracion_puntos.
+  /// moderacion | publicaciones | kybc | legal | gdpr | politicas | pagos | tickets | wallet | movimientos | configuracion_puntos | reportes.
   final String current;
 
   static const Color _purple = Color(0xFF7C3AED);
@@ -33,7 +33,9 @@ class BackofficeSidebar extends StatelessWidget {
     _Nav('pagos', Icons.payments_outlined, 'Pagos', Routes.STRIPE_DISPUTES),
     _Nav('tickets', Icons.support_agent_outlined, 'Tickets', Routes.SUPPORT_TICKETS),
     _Nav('wallet', Icons.account_balance_wallet_outlined, 'Wallet de puntos', Routes.WALLET_POINTS),
+    _Nav('movimientos', Icons.history, 'Historial de movimientos', Routes.MOVIMIENTOS), // NUEVO
     _Nav('configuracion_puntos', Icons.settings_outlined, 'Configuración de puntos', Routes.CONFIGURACION_PUNTOS),
+    _Nav('reportes', Icons.bar_chart_outlined, 'Reportes Ejecutivos', Routes.REPORTS),
   ];
 
   @override

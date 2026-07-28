@@ -65,7 +65,7 @@ import '../modules/withdrawals/views/withdrawals_view.dart';
 import '../modules/virtual_card/bindings/virtual_card_binding.dart';
 import '../modules/virtual_card/views/virtual_card_view.dart';
 
-// Import de la nueva vista
+// Publicaciones
 import '../modules/general_admin/views/publicaciones_page.dart';
 import '../modules/general_admin/views/publicacion_detail_page.dart';
 
@@ -73,13 +73,17 @@ import '../modules/general_admin/views/publicacion_detail_page.dart';
 import '../modules/general_admin/views/wallet_points_view.dart';
 import '../modules/general_admin/bindings/wallet_points_binding.dart';
 
-// Historial de movimientos
+// Movimientos
 import '../modules/general_admin/views/movimientos_view.dart';
 import '../modules/general_admin/bindings/movimientos_binding.dart';
 
-// Configuración del programa de puntos
+// Configuración de puntos
 import '../modules/general_admin/views/configuracion_puntos_view.dart';
 import '../modules/general_admin/bindings/configuracion_puntos_binding.dart';
+
+// Reportes Ejecutivos
+import '../modules/reports/views/reports_view.dart';
+import '../modules/reports/controllers/reports_controller.dart';
 
 part 'app_routes.dart';
 
@@ -159,7 +163,7 @@ class AppPages {
       transitionDuration: const Duration(milliseconds: 250),
     ),
 
-    // Nueva ruta: Publicaciones de aparcamiento
+    // Publicaciones de aparcamiento
     GetPage(
       name: _Paths.PUBLICACIONES,
       page: () => const PublicacionesPage(),
@@ -175,7 +179,7 @@ class AppPages {
       transitionDuration: const Duration(milliseconds: 250),
     ),
 
-    // Nueva ruta: Wallet de puntos
+    // Wallet de puntos
     GetPage(
       name: _Paths.WALLET_POINTS,
       page: () => const WalletPointsView(),
@@ -184,7 +188,7 @@ class AppPages {
       transitionDuration: const Duration(milliseconds: 250),
     ),
 
-    // Nueva ruta: Historial de movimientos
+    // Historial de movimientos
     GetPage(
       name: _Paths.MOVIMIENTOS,
       page: () => const MovimientosView(),
@@ -193,11 +197,22 @@ class AppPages {
       transitionDuration: const Duration(milliseconds: 250),
     ),
 
-    // Nueva ruta: Configuración del programa de puntos
+    // Configuración del programa de puntos
     GetPage(
       name: _Paths.CONFIGURACION_PUNTOS,
       page: () => const ConfiguracionPuntosView(),
       binding: ConfiguracionPuntosBinding(),
+      transition: Transition.rightToLeft,
+      transitionDuration: const Duration(milliseconds: 250),
+    ),
+
+    // Reportes Ejecutivos
+    GetPage(
+      name: _Paths.REPORTS,
+      page: () => const ReportsView(),
+      binding: BindingsBuilder(() {
+        Get.put(ReportsController());
+      }),
       transition: Transition.rightToLeft,
       transitionDuration: const Duration(milliseconds: 250),
     ),
